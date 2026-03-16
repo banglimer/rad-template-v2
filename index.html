@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Radiology Template Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #0d0f12; --bg2: #13161b; --bg3: #1a1e25;
+    --border: #2a2f3a; --border2: #363c4a;
+    --accent: #00e5a0; --accent2: #00b87a;
+    --blue: #4d9ef7; --blue2: #2d7dd4;
+    --text: #e8eaf0; --text2: #8b92a5; --text3: #555d70;
+    --danger: #ff4d6a;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans KR', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* ── Login Screen ── */
+  .login-screen {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 32px;
+  }
+  .login-logo { font-family: var(--mono); font-size: 28px; color: var(--accent); letter-spacing: 0.08em; }
+  .login-logo span { color: var(--text3); }
+  .login-card {
+    background: var(--bg2); border: 1px solid var(--border2);
+    border-radius: 14px; padding: 36px 44px; display: flex;
+    flex-direction: column; align-items: center; gap: 20px; width: 340px;
+  }
+  .login-title { font-size: 16px; font-weight: 500; color: var(--text); }
+  .login-sub { font-size: 12px; color: var(--text3); text-align: center; line-height: 1.6; }
+  .google-btn {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 20px; border-radius: 8px; width: 100%;
+    background: var(--bg3); border: 1px solid var(--border2);
+    color: var(--text); font-size: 14px; font-family: var(--sans);
+    cursor: pointer; transition: all .15s; justify-content: center;
+  }
+  .google-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .google-icon { width: 18px; height: 18px; }
+
+  /* ── Toolbar ── */
+  .toolbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 16px; background: var(--bg2);
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .toolbar-title { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--accent); letter-spacing: 0.05em; margin-right: 8px; }
+  .toolbar-title span { color: var(--text3); }
+  .tb-btn {
+    display: flex; align-items: center; gap: 5px;
+    padding: 5px 11px; border-radius: 5px; border: 1px solid var(--border2);
+    background: var(--bg3); color: var(--text2); font-size: 12px;
+    font-family: var(--sans); cursor: pointer; transition: all .15s;
+  }
+  .tb-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .tb-btn.shared { border-color: var(--blue2); color: var(--blue); }
+  .tb-btn.shared:hover { background: rgba(77,158,247,0.1); }
+  .tb-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+  .spacer { flex: 1; }
+  .user-badge {
+    display: flex; align-items: center; gap: 7px;
+    padding: 4px 10px; border-radius: 20px;
+    background: var(--bg3); border: 1px solid var(--border);
+    font-size: 11px; color: var(--text3);
+  }
+  .user-avatar { width: 20px; height: 20px; border-radius: 50%; background: var(--border2); object-fit: cover; }
+  .logout-btn { background: none; border: none; color: var(--text3); font-size: 11px; cursor: pointer; padding: 0; margin-left: 4px; }
+  .logout-btn:hover { color: var(--danger); }
+
+  /* ── Search ── */
+  .search-wrap { padding: 10px 16px; background: var(--bg2); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .search-input {
+    width: 100%; padding: 7px 12px 7px 32px;
+    background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: 6px; color: var(--text); font-size: 13px;
+    font-family: var(--sans); outline: none; transition: border .15s;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238b92a5' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: 10px center;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--text3); }
+
+  /* ── Main ── */
+  .main { display: flex; flex: 1; overflow: hidden; }
+
+  /* ── Tree ── */
+  .tree-panel {
+    width: 250px; flex-shrink: 0; background: var(--bg2);
+    border-right: 1px solid var(--border); overflow-y: auto; padding: 8px 0;
+  }
+  .tree-panel::-webkit-scrollbar { width: 4px; }
+  .tree-panel::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .section-label {
+    display: flex; align-items: center; gap: 6px;
+    padding: 10px 14px 4px; font-size: 10px; font-weight: 500;
+    color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase;
+    border-top: 1px solid var(--border); margin-top: 4px;
+  }
+  .section-label:first-child { border-top: none; margin-top: 0; }
+  .section-label-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .section-label-dot.shared { background: var(--blue); }
+  .section-label-dot.personal { background: var(--accent); }
+
+  .modality-header {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 14px; font-size: 11px; font-weight: 500;
+    color: var(--text3); letter-spacing: 0.06em; text-transform: uppercase;
+    cursor: pointer; user-select: none;
+  }
+  .modality-header:hover { color: var(--text2); }
+  .chevron { font-size: 9px; transition: transform .2s; display: inline-block; }
+  .chevron.open { transform: rotate(90deg); }
+
+  .sec-header {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 14px 4px 26px; font-size: 12px;
+    color: var(--text2); cursor: pointer; user-select: none;
+  }
+  .sec-header:hover { color: var(--text); }
+
+  .tmpl-item {
+    display: flex; align-items: center;
+    padding: 6px 14px 6px 36px; font-size: 13px;
+    color: var(--text2); cursor: pointer; transition: all .1s;
+    border-left: 2px solid transparent;
+  }
+  .tmpl-item:hover { color: var(--text); background: var(--bg3); }
+  .tmpl-item.active { background: rgba(0,229,160,0.06); border-left-color: var(--accent); color: var(--accent); }
+  .tmpl-item.active.shared-item { background: rgba(77,158,247,0.06); border-left-color: var(--blue); color: var(--blue); }
+  .tmpl-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--border2); margin-right: 8px; flex-shrink: 0; }
+  .tmpl-item.active .tmpl-dot { background: var(--accent); }
+  .tmpl-item.active.shared-item .tmpl-dot { background: var(--blue); }
+  .tmpl-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ── Right Panel ── */
+  .right-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .content-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .content-title { font-size: 15px; font-weight: 500; flex: 1; }
+  .shared-badge {
+    padding: 2px 8px; border-radius: 10px; font-size: 10px;
+    background: rgba(77,158,247,0.1); border: 1px solid var(--blue2); color: var(--blue);
+  }
+  .personal-badge {
+    padding: 2px 8px; border-radius: 10px; font-size: 10px;
+    background: rgba(0,229,160,0.1); border: 1px solid var(--accent2); color: var(--accent);
+  }
+  .content-meta { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+  .copy-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 6px;
+    background: rgba(0,229,160,0.1); border: 1px solid var(--accent2);
+    color: var(--accent); font-size: 12px; font-family: var(--sans);
+    cursor: pointer; transition: all .15s;
+  }
+  .copy-btn:hover { background: rgba(0,229,160,0.2); }
+  .copy-btn.copied { background: rgba(0,229,160,0.25); }
+
+  .text-area {
+    flex: 1; padding: 20px; overflow-y: auto;
+    font-family: var(--mono); font-size: 13px; line-height: 1.8;
+    color: var(--text); white-space: pre-wrap; word-break: break-word;
+  }
+  .text-area::-webkit-scrollbar { width: 4px; }
+  .text-area::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  .text-area-edit {
+    flex: 1; padding: 20px; background: transparent; border: none; outline: none; resize: none;
+    font-family: var(--mono); font-size: 13px; line-height: 1.8; color: var(--text); overflow-y: auto;
+  }
+  .text-area-edit::-webkit-scrollbar { width: 4px; }
+  .text-area-edit::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .empty-state {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 12px; color: var(--text3);
+  }
+  .empty-icon { font-size: 36px; opacity: 0.3; }
+
+  .bottom-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 20px; border-top: 1px solid var(--border);
+    background: var(--bg2); flex-shrink: 0;
+  }
+  .action-btn {
+    padding: 5px 14px; border-radius: 5px;
+    background: var(--bg3); border: 1px solid var(--border2);
+    color: var(--text2); font-size: 12px; font-family: var(--sans);
+    cursor: pointer; transition: all .15s;
+  }
+  .action-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .action-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,229,160,0.06); }
+  .status-msg { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+  .status-msg.ok { color: var(--accent); }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center; z-index: 100;
+  }
+  .modal {
+    background: var(--bg2); border: 1px solid var(--border2);
+    border-radius: 12px; padding: 26px; width: 500px; max-width: 92vw;
+  }
+  .modal-title { font-size: 15px; font-weight: 500; margin-bottom: 16px; }
+  .modal label { display: block; font-size: 10px; color: var(--text3); margin-bottom: 4px; margin-top: 12px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .modal input, .modal select, .modal textarea {
+    width: 100%; padding: 8px 10px;
+    background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: 6px; color: var(--text); font-size: 13px;
+    font-family: var(--sans); outline: none; transition: border .15s;
+  }
+  .modal input:focus, .modal select:focus, .modal textarea:focus { border-color: var(--accent); }
+  .modal textarea { font-family: var(--mono); resize: vertical; min-height: 130px; line-height: 1.7; }
+  .modal select option { background: var(--bg3); }
+  .type-toggle { display: flex; gap: 8px; margin-top: 4px; }
+  .type-btn {
+    flex: 1; padding: 8px; border-radius: 6px; font-size: 12px;
+    font-family: var(--sans); cursor: pointer; transition: all .15s; text-align: center;
+    background: var(--bg3); border: 1px solid var(--border2); color: var(--text2);
+  }
+  .type-btn.selected-personal { border-color: var(--accent2); color: var(--accent); background: rgba(0,229,160,0.08); }
+  .type-btn.selected-shared { border-color: var(--blue2); color: var(--blue); background: rgba(77,158,247,0.08); }
+  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+  .modal-btns button {
+    padding: 7px 18px; border-radius: 6px; font-size: 13px;
+    font-family: var(--sans); cursor: pointer; transition: all .15s;
+  }
+  .btn-cancel { background: var(--bg3); border: 1px solid var(--border2); color: var(--text2); }
+  .btn-cancel:hover { border-color: var(--text2); }
+  .btn-ok { background: rgba(0,229,160,0.15); border: 1px solid var(--accent2); color: var(--accent); }
+  .btn-ok:hover { background: rgba(0,229,160,0.25); }
+
+  .loading { display: flex; align-items: center; justify-content: center; flex: 1; color: var(--text3); font-family: var(--mono); font-size: 13px; gap: 10px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner { width: 16px; height: 16px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const SUPABASE_URL = 'https://zkmgkvgsrsmvfveugvwu.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_I8a6WlgXK-45-NRgOT2E9g_lJozrPal';
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let state = {
+  user: null,
+  templates: [],
+  search: '',
+  selected: null,
+  editing: false,
+  editBody: '',
+  modal: null,
+  newType: 'personal',
+  status: '',
+  statusOk: false,
+  loading: true,
+  authLoading: true,
+};
+
+function setState(patch) { Object.assign(state, patch); render(); }
+
+// ── Auth ─────────────────────────────────────────────────────
+async function init() {
+  const { data: { session } } = await db.auth.getSession();
+  if (session?.user) {
+    setState({ user: session.user, authLoading: false });
+    await loadTemplates();
+  } else {
+    setState({ authLoading: false, loading: false });
+  }
+  db.auth.onAuthStateChange(async (event, session) => {
+    if (session?.user) {
+      setState({ user: session.user });
+      await loadTemplates();
+    } else {
+      setState({ user: null, templates: [], selected: null, loading: false });
+    }
+  });
+}
+
+async function loginWithGoogle() {
+  await db.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.href }
+  });
+}
+
+async function logout() {
+  await db.auth.signOut();
+  setState({ user: null, templates: [], selected: null });
+}
+
+// ── Data ─────────────────────────────────────────────────────
+async function loadTemplates() {
+  setState({ loading: true });
+  const { data, error } = await db.from('templates').select('*').order('modality').order('section').order('title');
+  if (!error) setState({ templates: data || [], loading: false });
+}
+
+async function addTemplate(modality, section, title, body, isShared) {
+  const { data, error } = await db.from('templates')
+    .insert([{ modality, section, title, body, is_shared: isShared, user_id: state.user.id }])
+    .select().single();
+  if (!error && data) {
+    state.templates = [...state.templates, data].sort((a, b) => a.title.localeCompare(b.title));
+    showStatus('템플릿 추가 완료', true);
+    setState({ modal: null, selected: data });
+  }
+}
+
+async function saveTemplate(id, body) {
+  const { error } = await db.from('templates').update({ body }).eq('id', id);
+  if (!error) {
+    state.templates = state.templates.map(t => t.id === id ? { ...t, body } : t);
+    if (state.selected?.id === id) state.selected = { ...state.selected, body };
+    showStatus('저장 완료', true);
+    setState({ editing: false });
+  }
+}
+
+async function deleteTemplate(id) {
+  if (!confirm('이 템플릿을 삭제하시겠습니까?')) return;
+  const { error } = await db.from('templates').delete().eq('id', id);
+  if (!error) {
+    state.templates = state.templates.filter(t => t.id !== id);
+    showStatus('삭제됨', false);
+    setState({ selected: null });
+  }
+}
+
+function showStatus(msg, ok) {
+  setState({ status: msg, statusOk: ok });
+  setTimeout(() => setState({ status: '' }), 3000);
+}
+
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => showStatus('클립보드에 복사됨', true));
+}
+
+// ── Tree helpers ──────────────────────────────────────────────
+function getTree(isShared) {
+  const ft = state.search.toLowerCase();
+  const tree = {};
+  for (const t of state.templates) {
+    if (t.is_shared !== isShared) continue;
+    if (!isShared && t.user_id !== state.user?.id) continue;
+    if (ft && !t.title.toLowerCase().includes(ft) && !t.modality.toLowerCase().includes(ft) && !t.section.toLowerCase().includes(ft)) continue;
+    if (!tree[t.modality]) tree[t.modality] = {};
+    if (!tree[t.modality][t.section]) tree[t.modality][t.section] = [];
+    tree[t.modality][t.section].push(t);
+  }
+  return tree;
+}
+
+// ── Render ────────────────────────────────────────────────────
+function render() {
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+
+  if (state.authLoading) {
+    app.innerHTML = '<div class="loading"><div class="spinner"></div> 초기화 중...</div>';
+    return;
+  }
+
+  if (!state.user) { renderLogin(app); return; }
+
+  // Toolbar
+  const tb = el('div', { cls: 'toolbar' });
+  tb.appendChild(el('div', { cls: 'toolbar-title', html: '🩻 RAD<span>TEMPLATE</span>' }));
+  const addBtn = el('button', { cls: 'tb-btn', text: '＋ 내 템플릿 추가' });
+  addBtn.onclick = () => setState({ modal: { type: 'add' }, newType: 'personal' });
+  tb.appendChild(addBtn);
+  const addSharedBtn = el('button', { cls: 'tb-btn shared', text: '🌐 공용 템플릿 추가' });
+  addSharedBtn.onclick = () => setState({ modal: { type: 'add' }, newType: 'shared' });
+  tb.appendChild(addSharedBtn);
+  tb.appendChild(el('div', { cls: 'spacer' }));
+  if (state.selected) {
+    const canEdit = state.selected.user_id === state.user.id;
+    if (canEdit) {
+      const delBtn = el('button', { cls: 'tb-btn danger', text: '🗑 삭제' });
+      delBtn.onclick = () => deleteTemplate(state.selected.id);
+      tb.appendChild(delBtn);
+    }
+  }
+  // User badge
+  const badge = el('div', { cls: 'user-badge' });
+  const avatar = document.createElement('img');
+  avatar.className = 'user-avatar';
+  avatar.src = state.user.user_metadata?.avatar_url || '';
+  avatar.onerror = () => { avatar.style.display = 'none'; };
+  badge.appendChild(avatar);
+  badge.appendChild(el('span', { text: state.user.user_metadata?.name || state.user.email }));
+  const logoutBtn = el('button', { cls: 'logout-btn', text: '로그아웃' });
+  logoutBtn.onclick = logout;
+  badge.appendChild(logoutBtn);
+  tb.appendChild(badge);
+  app.appendChild(tb);
+
+  // Search
+  const sw = el('div', { cls: 'search-wrap' });
+  const si = el('input', { cls: 'search-input', placeholder: '템플릿 검색...' });
+  si.value = state.search;
+  si.oninput = e => setState({ search: e.target.value });
+  sw.appendChild(si); app.appendChild(sw);
+
+  // Main
+  const main = el('div', { cls: 'main' });
+
+  // Tree
+  const tree = el('div', { cls: 'tree-panel' });
+  if (state.loading) {
+    tree.appendChild(el('div', { cls: 'loading', html: '<div class="spinner"></div>' }));
+  } else {
+    // 공용
+    const sharedLabel = el('div', { cls: 'section-label' });
+    sharedLabel.innerHTML = '<div class="section-label-dot shared"></div> 공용 템플릿';
+    tree.appendChild(sharedLabel);
+    renderTree(tree, getTree(true), true);
+
+    // 개인
+    const personalLabel = el('div', { cls: 'section-label' });
+    personalLabel.innerHTML = '<div class="section-label-dot personal"></div> 내 템플릿';
+    tree.appendChild(personalLabel);
+    renderTree(tree, getTree(false), false);
+  }
+  main.appendChild(tree);
+
+  // Right
+  const right = el('div', { cls: 'right-panel' });
+  if (!state.selected) {
+    right.innerHTML = `<div class="empty-state"><div class="empty-icon">🩻</div><div style="font-size:13px">좌측에서 템플릿을 선택하세요</div><div style="font-size:11px;color:var(--text3)">더블클릭하면 즉시 클립보드에 복사됩니다</div></div>`;
+  } else {
+    const t = state.selected;
+    const canEdit = t.user_id === state.user.id;
+
+    const ch = el('div', { cls: 'content-header' });
+    ch.appendChild(el('div', { cls: 'content-title', text: t.title }));
+    ch.appendChild(el('div', { cls: t.is_shared ? 'shared-badge' : 'personal-badge', text: t.is_shared ? '🌐 공용' : '🔒 내 템플릿' }));
+    ch.appendChild(el('div', { cls: 'content-meta', text: `${t.modality} / ${t.section}` }));
+    const copyBtn = el('button', { cls: 'copy-btn', text: '📋 복사' });
+    copyBtn.onclick = () => { copyToClipboard(t.body); copyBtn.className = 'copy-btn copied'; copyBtn.textContent = '✓ 복사됨'; setTimeout(() => { copyBtn.className = 'copy-btn'; copyBtn.textContent = '📋 복사'; }, 2000); };
+    ch.appendChild(copyBtn);
+    right.appendChild(ch);
+
+    if (state.editing && canEdit) {
+      const ta = document.createElement('textarea');
+      ta.className = 'text-area-edit';
+      ta.value = state.editBody;
+      ta.oninput = e => { state.editBody = e.target.value; };
+      right.appendChild(ta);
+    } else {
+      right.appendChild(el('div', { cls: 'text-area', text: t.body }));
+    }
+
+    const bb = el('div', { cls: 'bottom-bar' });
+    if (canEdit) {
+      const editBtn = el('button', { cls: 'action-btn' + (state.editing ? ' active' : ''), text: state.editing ? '✏️ 편집 중' : '✏️ 편집' });
+      editBtn.onclick = () => setState({ editing: !state.editing, editBody: t.body });
+      bb.appendChild(editBtn);
+      if (state.editing) {
+        const saveBtn = el('button', { cls: 'action-btn', text: '💾 저장' });
+        saveBtn.onclick = () => saveTemplate(t.id, state.editBody);
+        bb.appendChild(saveBtn);
+      }
+    }
+    if (state.status) bb.appendChild(el('span', { cls: 'status-msg' + (state.statusOk ? ' ok' : ''), text: state.status }));
+    right.appendChild(bb);
+  }
+  main.appendChild(right);
+  app.appendChild(main);
+
+  // Modal
+  if (state.modal?.type === 'add') renderModal(app);
+}
+
+function renderLogin(app) {
+  const screen = el('div', { cls: 'login-screen' });
+  screen.innerHTML = `
+    <div class="login-logo">🩻 RAD<span>TEMPLATE</span></div>
+    <div class="login-card">
+      <div class="login-title">영상의학과 템플릿 매니저</div>
+      <div class="login-sub">구글 계정으로 로그인하면<br/>어디서든 내 템플릿을 사용할 수 있어요</div>
+      <button class="google-btn" id="google-login">
+        <svg class="google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Google로 로그인
+      </button>
+    </div>
+  `;
+  app.appendChild(screen);
+  document.getElementById('google-login').onclick = loginWithGoogle;
+}
+
+function renderTree(container, treeData, isShared) {
+  if (Object.keys(treeData).length === 0) {
+    container.appendChild(el('div', { cls: 'sec-header', text: '템플릿 없음', style: 'color:var(--text3);font-size:11px;padding-left:20px' }));
+    return;
+  }
+  for (const [modality, sections] of Object.entries(treeData)) {
+    const mh = el('div', { cls: 'modality-header' });
+    mh.innerHTML = `<span class="chevron open">▶</span> ${modality}`;
+    container.appendChild(mh);
+    const mBody = el('div');
+    for (const [section, templates] of Object.entries(sections)) {
+      mBody.appendChild(el('div', { cls: 'sec-header', html: `📁 ${section}` }));
+      for (const t of templates) {
+        const isActive = state.selected?.id === t.id;
+        const ti = el('div', { cls: `tmpl-item${isActive ? ' active' : ''}${isShared && isActive ? ' shared-item' : ''}` });
+        ti.innerHTML = `<div class="tmpl-dot"></div><span class="tmpl-name">${t.title}</span>`;
+        ti.onclick = () => setState({ selected: t, editing: false, editBody: t.body });
+        ti.ondblclick = () => { setState({ selected: t }); copyToClipboard(t.body); };
+        mBody.appendChild(ti);
+      }
+    }
+    container.appendChild(mBody);
+    mh.onclick = () => { mBody.style.display = mBody.style.display === 'none' ? '' : 'none'; };
+  }
+}
+
+function renderModal(app) {
+  const modalities = [...new Set(state.templates.map(t => t.modality))];
+  const sections = [...new Set(state.templates.map(t => t.section))];
+  const overlay = el('div', { cls: 'modal-overlay' });
+  const modal = el('div', { cls: 'modal' });
+  modal.innerHTML = `
+    <div class="modal-title">새 템플릿 추가</div>
+    <label>종류</label>
+    <div class="type-toggle">
+      <button class="type-btn ${state.newType === 'personal' ? 'selected-personal' : ''}" id="type-personal">🔒 내 템플릿</button>
+      <button class="type-btn ${state.newType === 'shared' ? 'selected-shared' : ''}" id="type-shared">🌐 공용 템플릿</button>
+    </div>
+    <label>MODALITY</label>
+    <input id="m-modality" list="mod-list" placeholder="예: CT, MRI, X-Ray"/>
+    <datalist id="mod-list">${modalities.map(m => `<option value="${m}">`).join('')}</datalist>
+    <label>SECTION</label>
+    <input id="m-section" list="sec-list" placeholder="예: Chest, Brain"/>
+    <datalist id="sec-list">${sections.map(s => `<option value="${s}">`).join('')}</datalist>
+    <label>제목</label>
+    <input id="m-title" placeholder="템플릿 제목"/>
+    <label>본문</label>
+    <textarea id="m-body" rows="6" placeholder="판독문 내용..."></textarea>
+  `;
+  const btns = el('div', { cls: 'modal-btns' });
+  const cancel = el('button', { cls: 'btn-cancel', text: '취소' });
+  cancel.onclick = () => setState({ modal: null });
+  const ok = el('button', { cls: 'btn-ok', text: '추가' });
+  ok.onclick = () => {
+    const mod = document.getElementById('m-modality').value.trim();
+    const sec = document.getElementById('m-section').value.trim();
+    const title = document.getElementById('m-title').value.trim();
+    const body = document.getElementById('m-body').value.trim();
+    if (mod && sec && title && body) addTemplate(mod, sec, title, body, state.newType === 'shared');
+  };
+  btns.appendChild(cancel); btns.appendChild(ok);
+  modal.appendChild(btns);
+  overlay.appendChild(modal);
+  overlay.onclick = e => { if (e.target === overlay) setState({ modal: null }); };
+  app.appendChild(overlay);
+  document.getElementById('type-personal').onclick = () => setState({ newType: 'personal' });
+  document.getElementById('type-shared').onclick = () => setState({ newType: 'shared' });
+}
+
+// ── Util ──────────────────────────────────────────────────────
+function el(tag, opts = {}) {
+  const e = document.createElement(tag);
+  if (opts.cls) e.className = opts.cls;
+  if (opts.text) e.textContent = opts.text;
+  if (opts.html) e.innerHTML = opts.html;
+  if (opts.placeholder) e.placeholder = opts.placeholder;
+  if (opts.style) e.style.cssText = opts.style;
+  return e;
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && state.selected && !state.editing && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+    copyToClipboard(state.selected.body);
+  }
+});
+
+init();
+</script>
+</body>
+</html>

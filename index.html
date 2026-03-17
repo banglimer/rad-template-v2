@@ -370,9 +370,12 @@ function renderApp(app) {
   si.className = 'search-input'; si.placeholder = '템플릿 검색...'; si.value = state.search;
   si.oninput = e => {
   state.search = e.target.value;
-  renderTree(document.querySelector('.tree-panel'), getTree(true), true);
-  const pl = document.querySelector('.section-label:last-of-type');
-  renderTree(document.querySelector('.tree-panel'), getTree(false), false);
+  render();
+  const searchInput = document.querySelector('.search-input');
+  if (searchInput) {
+    searchInput.focus();
+    searchInput.setSelectionRange(state.search.length, state.search.length);
+  }
 };
   sw.appendChild(si); app.appendChild(sw);
 

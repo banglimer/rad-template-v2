@@ -264,14 +264,9 @@ async function loadAdminUsers() {
 
 async function toggleApprove(userId, userEmail, current) {
   await db.from('allowed_users').update({ approved: !current }).eq('id', userId);
-  // 승인 시 이메일 알림 (Supabase Edge Function 없이 mailto 방식)
-  if (!current) {
-    const subject = encodeURIComponent('[RadTemplate] 승인 완료 안내');
-    const body = encodeURIComponent(`안녕하세요!\n\nRadiology Template Manager 사용 승인이 완료되었습니다.\n아래 링크로 접속하여 사용해주세요.\n\n${window.location.href}\n\n감사합니다.`);
-    window.open(`mailto:${userEmail}?subject=${subject}&body=${body}`);
-  }
+
   await loadAdminUsers();
-  showStatus(current ? '승인 취소됨' : '승인 완료! 이메일을 발송해주세요 📧', !current);
+  showStatus(current ? '승인 취소됨' : '승인 완료!', true);
 }
 
 function showStatus(msg, ok) {

@@ -161,7 +161,7 @@
 <script>
 const SUPABASE_URL = 'https://zkmgkvgsrsmvfveugvwu.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_I8a6WlgXK-45-NRgOT2E9g_lJozrPal';
-const ADMIN_EMAIL = 'banglimer1@gmail.com'; 
+const ADMIN_EMAIL = ''; // ← 여기에 관리자(본인) 구글 이메일 입력
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -221,8 +221,7 @@ async function logout() {
 // ── Templates ────────────────────────────────────────────────
 async function loadTemplates(showSpinner = true) {
   if (showSpinner) setState({ loading: true });
-  const { data } = await db.from('templates')
-    .select('*').order('modality').order('section').order('title');
+  const { data } = await db.from('templates').select('*').order('modality').order('section').order('title');
   setState({ templates: data || [], loading: false });
 }
 
@@ -370,14 +369,11 @@ function renderApp(app) {
   const si = document.createElement('input');
   si.className = 'search-input'; si.placeholder = '템플릿 검색...'; si.value = state.search;
   si.oninput = e => {
-  state.search = e.target.value;
-  render();
-  const searchInput = document.querySelector('.search-input');
-  if (searchInput) {
-    searchInput.focus();
-    searchInput.setSelectionRange(state.search.length, state.search.length);
-  }
-};
+    state.search = e.target.value;
+    render();
+    const s = document.querySelector('.search-input');
+    if (s) { s.focus(); s.setSelectionRange(state.search.length, state.search.length); }
+  };
   sw.appendChild(si); app.appendChild(sw);
 
   // Main

@@ -20,7 +20,6 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-  /* ── Login ── */
   .login-screen { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 32px; }
   .login-logo { font-family: var(--mono); font-size: 28px; color: var(--accent); letter-spacing: 0.08em; }
   .login-logo span { color: var(--text3); }
@@ -30,7 +29,6 @@
   .google-btn { display: flex; align-items: center; gap: 10px; padding: 11px 20px; border-radius: 8px; width: 100%; background: var(--bg3); border: 1px solid var(--border2); color: var(--text); font-size: 14px; font-family: var(--sans); cursor: pointer; transition: all .15s; justify-content: center; }
   .google-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-  /* ── Pending Screen ── */
   .pending-screen { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; }
   .pending-card { background: var(--bg2); border: 1px solid var(--warning); border-radius: 14px; padding: 40px 48px; display: flex; flex-direction: column; align-items: center; gap: 16px; width: 380px; text-align: center; }
   .pending-icon { font-size: 40px; }
@@ -40,8 +38,7 @@
   .pending-logout { padding: 7px 18px; border-radius: 6px; background: var(--bg3); border: 1px solid var(--border2); color: var(--text2); font-size: 13px; font-family: var(--sans); cursor: pointer; transition: all .15s; margin-top: 4px; }
   .pending-logout:hover { border-color: var(--danger); color: var(--danger); }
 
-  /* ── Toolbar ── */
-  .toolbar { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--bg2); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .toolbar { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--bg2); border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap; }
   .toolbar-title { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--accent); letter-spacing: 0.05em; margin-right: 8px; }
   .toolbar-title span { color: var(--text3); }
   .tb-btn { display: flex; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 5px; border: 1px solid var(--border2); background: var(--bg3); color: var(--text2); font-size: 12px; font-family: var(--sans); cursor: pointer; transition: all .15s; }
@@ -57,16 +54,13 @@
   .logout-btn { background: none; border: none; color: var(--text3); font-size: 11px; cursor: pointer; padding: 0; margin-left: 4px; }
   .logout-btn:hover { color: var(--danger); }
 
-  /* ── Search ── */
   .search-wrap { padding: 10px 16px; background: var(--bg2); border-bottom: 1px solid var(--border); flex-shrink: 0; }
   .search-input { width: 100%; padding: 7px 12px 7px 32px; background: var(--bg3); border: 1px solid var(--border2); border-radius: 6px; color: var(--text); font-size: 13px; font-family: var(--sans); outline: none; transition: border .15s; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238b92a5' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 10px center; }
   .search-input:focus { border-color: var(--accent); }
   .search-input::placeholder { color: var(--text3); }
 
-  /* ── Main ── */
   .main { display: flex; flex: 1; overflow: hidden; }
 
-  /* ── Tree ── */
   .tree-panel { width: 250px; flex-shrink: 0; background: var(--bg2); border-right: 1px solid var(--border); overflow-y: auto; padding: 8px 0; }
   .tree-panel::-webkit-scrollbar { width: 4px; }
   .tree-panel::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
@@ -79,25 +73,31 @@
   .modality-header:hover { color: var(--text2); }
   .chevron { font-size: 9px; transition: transform .2s; display: inline-block; }
   .chevron.open { transform: rotate(90deg); }
-  .sec-header { display: flex; align-items: center; gap: 6px; padding: 4px 14px 4px 26px; font-size: 12px; color: var(--text2); cursor: pointer; user-select: none; }
-  .sec-header:hover { color: var(--text); }
-  .tmpl-item { display: flex; align-items: center; padding: 6px 14px 6px 36px; font-size: 13px; color: var(--text2); cursor: pointer; transition: all .1s; border-left: 2px solid transparent; }
+  .sec-header { display: flex; align-items: center; gap: 6px; padding: 4px 14px 4px 26px; font-size: 12px; color: var(--text2); user-select: none; }
+
+  /* ── 드래그 가능한 템플릿 아이템 ── */
+  .tmpl-item { display: flex; align-items: center; padding: 6px 14px 6px 36px; font-size: 13px; color: var(--text2); cursor: pointer; transition: all .1s; border-left: 2px solid transparent; position: relative; }
   .tmpl-item:hover { color: var(--text); background: var(--bg3); }
   .tmpl-item.active { background: rgba(0,229,160,0.06); border-left-color: var(--accent); color: var(--accent); }
   .tmpl-item.active.shared-item { background: rgba(77,158,247,0.06); border-left-color: var(--blue); color: var(--blue); }
+  .tmpl-item.dragging { opacity: 0.4; background: var(--bg3); }
+  .tmpl-item.drag-over { border-top: 2px solid var(--accent); }
+  .drag-handle { width: 14px; height: 14px; margin-right: 4px; margin-left: -18px; opacity: 0; cursor: grab; color: var(--text3); font-size: 11px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .tmpl-item:hover .drag-handle { opacity: 1; }
   .tmpl-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--border2); margin-right: 8px; flex-shrink: 0; }
   .tmpl-item.active .tmpl-dot { background: var(--accent); }
   .tmpl-item.active.shared-item .tmpl-dot { background: var(--blue); }
   .tmpl-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-  /* ── Right Panel ── */
   .right-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
   .content-header { display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-  .content-title { font-size: 15px; font-weight: 500; flex: 1; }
-  .shared-badge { padding: 2px 8px; border-radius: 10px; font-size: 10px; background: rgba(77,158,247,0.1); border: 1px solid var(--blue2); color: var(--blue); }
-  .personal-badge { padding: 2px 8px; border-radius: 10px; font-size: 10px; background: rgba(0,229,160,0.1); border: 1px solid var(--accent2); color: var(--accent); }
-  .content-meta { font-size: 11px; color: var(--text3); font-family: var(--mono); }
-  .copy-btn { display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 6px; background: rgba(0,229,160,0.1); border: 1px solid var(--accent2); color: var(--accent); font-size: 12px; font-family: var(--sans); cursor: pointer; transition: all .15s; }
+  .content-title-area { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .content-title { font-size: 15px; font-weight: 500; }
+  .content-title-input { font-size: 15px; font-weight: 500; background: var(--bg3); border: 1px solid var(--accent2); border-radius: 6px; color: var(--text); padding: 3px 8px; outline: none; font-family: var(--sans); flex: 1; min-width: 0; }
+  .shared-badge { padding: 2px 8px; border-radius: 10px; font-size: 10px; background: rgba(77,158,247,0.1); border: 1px solid var(--blue2); color: var(--blue); white-space: nowrap; }
+  .personal-badge { padding: 2px 8px; border-radius: 10px; font-size: 10px; background: rgba(0,229,160,0.1); border: 1px solid var(--accent2); color: var(--accent); white-space: nowrap; }
+  .content-meta { font-size: 11px; color: var(--text3); font-family: var(--mono); white-space: nowrap; }
+  .copy-btn { display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 6px; background: rgba(0,229,160,0.1); border: 1px solid var(--accent2); color: var(--accent); font-size: 12px; font-family: var(--sans); cursor: pointer; transition: all .15s; white-space: nowrap; }
   .copy-btn:hover { background: rgba(0,229,160,0.2); }
   .copy-btn.copied { background: rgba(0,229,160,0.25); }
   .text-area { flex: 1; padding: 20px; overflow-y: auto; font-family: var(--mono); font-size: 13px; line-height: 1.8; color: var(--text); white-space: pre-wrap; word-break: break-word; }
@@ -115,7 +115,6 @@
   .status-msg { font-size: 11px; color: var(--text3); font-family: var(--mono); }
   .status-msg.ok { color: var(--accent); }
 
-  /* ── Admin Modal ── */
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 100; }
   .modal { background: var(--bg2); border: 1px solid var(--border2); border-radius: 12px; padding: 26px; width: 520px; max-width: 92vw; max-height: 80vh; display: flex; flex-direction: column; }
   .modal-title { font-size: 15px; font-weight: 500; margin-bottom: 16px; flex-shrink: 0; }
@@ -135,7 +134,6 @@
   .btn-ok { background: rgba(0,229,160,0.15); border: 1px solid var(--accent2); color: var(--accent); }
   .btn-ok:hover { background: rgba(0,229,160,0.25); }
 
-  /* ── User list ── */
   .user-list { overflow-y: auto; flex: 1; margin: 8px 0; }
   .user-list::-webkit-scrollbar { width: 4px; }
   .user-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
@@ -147,8 +145,6 @@
   .approve-btn.pending:hover { background: rgba(245,166,35,0.25); }
   .approve-btn.approved { background: rgba(0,229,160,0.1); border: 1px solid var(--accent2); color: var(--accent); }
   .approve-btn.approved:hover { background: rgba(255,77,106,0.1); border-color: var(--danger); color: var(--danger); }
-  .revoke-btn { padding: 4px 10px; border-radius: 5px; font-size: 11px; background: var(--bg); border: 1px solid var(--border2); color: var(--text3); cursor: pointer; transition: all .15s; }
-  .revoke-btn:hover { border-color: var(--danger); color: var(--danger); }
   .empty-users { text-align: center; padding: 24px; color: var(--text3); font-size: 13px; }
 
   .loading { display: flex; align-items: center; justify-content: center; flex: 1; color: var(--text3); font-family: var(--mono); font-size: 13px; gap: 10px; }
@@ -161,28 +157,28 @@
 <script>
 const SUPABASE_URL = 'https://zkmgkvgsrsmvfveugvwu.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_I8a6WlgXK-45-NRgOT2E9g_lJozrPal';
-const ADMIN_EMAIL = 'banglimer1@gmail.com'; 
+const ADMIN_EMAIL = 'banglimer1@gmail.com';
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let state = {
   user: null, approved: false,
   templates: [], search: '',
-  selected: null, editing: false, editBody: '',
+  selected: null, editing: false, editBody: '', editTitle: '',
   modal: null, newType: 'personal',
   adminUsers: [],
   status: '', statusOk: false,
   loading: true, authLoading: true,
+  dragSrcId: null,
 };
 
 function setState(patch) { Object.assign(state, patch); render(); }
 
-// ── Auth ─────────────────────────────────────────────────────
+// ── Auth ──────────────────────────────────────────────────────
 async function init() {
   const { data: { session } } = await db.auth.getSession();
   if (session?.user) await handleUser(session.user);
   else setState({ authLoading: false, loading: false });
-
   db.auth.onAuthStateChange(async (event, session) => {
     if (session?.user) await handleUser(session.user);
     else setState({ user: null, approved: false, templates: [], selected: null, loading: false, authLoading: false });
@@ -191,20 +187,13 @@ async function init() {
 
 async function handleUser(user) {
   setState({ user, authLoading: false });
-  // 관리자는 자동 승인
-  if (user.email === ADMIN_EMAIL) {
-    setState({ approved: true });
-    await loadTemplates();
-    return;
-  }
-  // allowed_users 등록 (없으면 자동 등록 — 승인 대기)
+  if (user.email === ADMIN_EMAIL) { setState({ approved: true }); await loadTemplates(); return; }
   const { data: existing } = await db.from('allowed_users').select('approved').eq('id', user.id).single();
   if (!existing) {
     await db.from('allowed_users').insert([{ id: user.id, email: user.email, approved: false }]);
     setState({ approved: false, loading: false });
   } else if (existing.approved) {
-    setState({ approved: true });
-    await loadTemplates();
+    setState({ approved: true }); await loadTemplates();
   } else {
     setState({ approved: false, loading: false });
   }
@@ -218,10 +207,10 @@ async function logout() {
   setState({ user: null, approved: false, templates: [], selected: null });
 }
 
-// ── Templates ────────────────────────────────────────────────
+// ── Templates ─────────────────────────────────────────────────
 async function loadTemplates(showSpinner = true) {
   if (showSpinner) setState({ loading: true });
-  const { data } = await db.from('templates').select('*').order('modality').order('section').order('title');
+  const { data } = await db.from('templates').select('*').order('modality').order('section').order('sort_order').order('title');
   setState({ templates: data || [], loading: false });
 }
 
@@ -230,17 +219,19 @@ async function addTemplate(modality, section, title, body, isShared) {
     .insert([{ modality, section, title, body, is_shared: isShared, user_id: state.user.id }])
     .select().single();
   if (!error && data) {
-    state.templates = [...state.templates, data].sort((a, b) => a.title.localeCompare(b.title));
+    state.templates = [...state.templates, data];
     showStatus('추가 완료', true);
     setState({ modal: null, selected: data });
   }
 }
 
-async function saveTemplate(id, body) {
-  const { error } = await db.from('templates').update({ body }).eq('id', id);
+async function saveTemplate(id, body, title) {
+  const updates = { body };
+  if (title !== undefined) updates.title = title;
+  const { error } = await db.from('templates').update(updates).eq('id', id);
   if (!error) {
-    state.templates = state.templates.map(t => t.id === id ? { ...t, body } : t);
-    if (state.selected?.id === id) state.selected = { ...state.selected, body };
+    state.templates = state.templates.map(t => t.id === id ? { ...t, ...updates } : t);
+    if (state.selected?.id === id) state.selected = { ...state.selected, ...updates };
     showStatus('저장 완료', true);
     setState({ editing: false });
   }
@@ -252,27 +243,46 @@ async function deleteTemplate(id) {
   if (!error) { state.templates = state.templates.filter(t => t.id !== id); showStatus('삭제됨', false); setState({ selected: null }); }
 }
 
-// ── Admin ─────────────────────────────────────────────────────
+// ── 드래그 순서 저장 ──────────────────────────────────────────
+async function saveOrder(modality, section, isShared, orderedIds) {
+  const updates = orderedIds.map((id, idx) =>
+    db.from('templates').update({ sort_order: idx }).eq('id', id)
+  );
+  await Promise.all(updates);
+  state.templates = state.templates.map(t => {
+    const idx = orderedIds.indexOf(t.id);
+    return idx >= 0 ? { ...t, sort_order: idx } : t;
+  });
+  setState({});
+}
+
+// ── Admin ──────────────────────────────────────────────────────
 async function loadAdminUsers() {
   const { data } = await db.from('allowed_users').select('*').order('created_at', { ascending: false });
   setState({ adminUsers: data || [] });
 }
 
-async function toggleApprove(userId, current) {
+async function toggleApprove(userId, userEmail, current) {
   await db.from('allowed_users').update({ approved: !current }).eq('id', userId);
+  // 승인 시 이메일 알림 (Supabase Edge Function 없이 mailto 방식)
+  if (!current) {
+    const subject = encodeURIComponent('[RadTemplate] 승인 완료 안내');
+    const body = encodeURIComponent(`안녕하세요!\n\nRadiology Template Manager 사용 승인이 완료되었습니다.\n아래 링크로 접속하여 사용해주세요.\n\n${window.location.href}\n\n감사합니다.`);
+    window.open(`mailto:${userEmail}?subject=${subject}&body=${body}`);
+  }
   await loadAdminUsers();
-  showStatus(current ? '승인 취소됨' : '승인 완료!', true);
+  showStatus(current ? '승인 취소됨' : '승인 완료! 이메일을 발송해주세요 📧', !current);
 }
 
 function showStatus(msg, ok) {
   setState({ status: msg, statusOk: ok });
-  setTimeout(() => setState({ status: '' }), 3000);
+  setTimeout(() => setState({ status: '' }), 4000);
 }
 function copyToClipboard(text) {
   navigator.clipboard.writeText(text).then(() => showStatus('클립보드에 복사됨', true));
 }
 
-// ── Tree helpers ──────────────────────────────────────────────
+// ── Tree helpers ───────────────────────────────────────────────
 function getTree(isShared) {
   const ft = state.search.toLowerCase();
   const tree = {};
@@ -287,7 +297,7 @@ function getTree(isShared) {
   return tree;
 }
 
-// ── Render ────────────────────────────────────────────────────
+// ── Render ─────────────────────────────────────────────────────
 function render() {
   const app = document.getElementById('app');
   app.innerHTML = '';
@@ -367,7 +377,7 @@ function renderApp(app) {
   // Search
   const sw = el('div', 'search-wrap');
   const si = document.createElement('input');
-  si.className = 'search-input'; si.placeholder = '템플릿 검색...'; si.value = state.search;
+  si.className = 'search-input'; si.placeholder = '제목, 내용, Modality 검색...'; si.value = state.search;
   si.oninput = e => {
     state.search = e.target.value;
     render();
@@ -381,29 +391,41 @@ function renderApp(app) {
   const tree = el('div', 'tree-panel');
   if (state.loading) { tree.appendChild(elh('div', 'loading', '<div class="spinner"></div>')); }
   else {
-    const sl = elh('div', 'section-label', '<div class="section-label-dot shared"></div> 공용 템플릿');
-    tree.appendChild(sl);
+    tree.appendChild(elh('div', 'section-label', '<div class="section-label-dot shared"></div> 공용 템플릿'));
     renderTree(tree, getTree(true), true);
-    const pl = elh('div', 'section-label', '<div class="section-label-dot personal"></div> 내 템플릿');
-    tree.appendChild(pl);
+    tree.appendChild(elh('div', 'section-label', '<div class="section-label-dot personal"></div> 내 템플릿'));
     renderTree(tree, getTree(false), false);
   }
   main.appendChild(tree);
 
+  // Right panel
   const right = el('div', 'right-panel');
   if (!state.selected) {
-    right.innerHTML = `<div class="empty-state"><div class="empty-icon">🩻</div><div style="font-size:13px">좌측에서 템플릿을 선택하세요</div><div style="font-size:11px;color:var(--text3)">더블클릭하면 즉시 클립보드에 복사됩니다</div></div>`;
+    right.innerHTML = `<div class="empty-state"><div class="empty-icon">🩻</div><div style="font-size:13px">좌측에서 템플릿을 선택하세요</div><div style="font-size:11px;color:var(--text3);margin-top:4px">더블클릭하면 즉시 클립보드에 복사 · 드래그로 순서 변경</div></div>`;
   } else {
     const t = state.selected;
     const canEdit = t.user_id === state.user.id;
+
+    // Header
     const ch = el('div', 'content-header');
-    ch.appendChild(elt('div', 'content-title', t.title));
-    ch.appendChild(elt('div', t.is_shared ? 'shared-badge' : 'personal-badge', t.is_shared ? '🌐 공용' : '🔒 내 템플릿'));
+    const titleArea = el('div', 'content-title-area');
+    if (state.editing && canEdit) {
+      const titleInput = document.createElement('input');
+      titleInput.className = 'content-title-input';
+      titleInput.value = state.editTitle;
+      titleInput.oninput = e => { state.editTitle = e.target.value; };
+      titleArea.appendChild(titleInput);
+    } else {
+      titleArea.appendChild(elt('div', 'content-title', t.title));
+    }
+    titleArea.appendChild(elt('div', t.is_shared ? 'shared-badge' : 'personal-badge', t.is_shared ? '🌐 공용' : '🔒 내 템플릿'));
+    ch.appendChild(titleArea);
     ch.appendChild(elt('div', 'content-meta', `${t.modality} / ${t.section}`));
     const copyBtn = elb('📋 복사', 'copy-btn');
     copyBtn.onclick = () => { copyToClipboard(t.body); copyBtn.className = 'copy-btn copied'; copyBtn.textContent = '✓ 복사됨'; setTimeout(() => { copyBtn.className = 'copy-btn'; copyBtn.textContent = '📋 복사'; }, 2000); };
     ch.appendChild(copyBtn);
     right.appendChild(ch);
+
     if (state.editing && canEdit) {
       const ta = document.createElement('textarea');
       ta.className = 'text-area-edit'; ta.value = state.editBody;
@@ -412,14 +434,15 @@ function renderApp(app) {
     } else {
       right.appendChild(elt('div', 'text-area', t.body));
     }
+
     const bb = el('div', 'bottom-bar');
     if (canEdit) {
       const editBtn = elb(state.editing ? '✏️ 편집 중' : '✏️ 편집', 'action-btn' + (state.editing ? ' active' : ''));
-      editBtn.onclick = () => setState({ editing: !state.editing, editBody: t.body });
+      editBtn.onclick = () => setState({ editing: !state.editing, editBody: t.body, editTitle: t.title });
       bb.appendChild(editBtn);
       if (state.editing) {
         const saveBtn = elb('💾 저장', 'action-btn');
-        saveBtn.onclick = () => saveTemplate(t.id, state.editBody);
+        saveBtn.onclick = () => saveTemplate(t.id, state.editBody, state.editTitle);
         bb.appendChild(saveBtn);
       }
     }
@@ -429,7 +452,6 @@ function renderApp(app) {
   main.appendChild(right);
   app.appendChild(main);
 
-  // Modals
   if (state.modal?.type === 'add') renderAddModal(app);
   if (state.modal?.type === 'admin') renderAdminModal(app);
 }
@@ -445,14 +467,46 @@ function renderTree(container, treeData, isShared) {
     const mBody = el('div', '');
     for (const [section, templates] of Object.entries(sections)) {
       mBody.appendChild(elh('div', 'sec-header', `📁 ${section}`));
+
+      // 드래그 가능한 템플릿 목록
+      const secList = el('div', '');
+      secList.dataset.modality = modality;
+      secList.dataset.section = section;
+      secList.dataset.shared = isShared;
+
       for (const t of templates) {
         const isActive = state.selected?.id === t.id;
+        const canDrag = t.user_id === state.user?.id || state.user?.email === ADMIN_EMAIL;
         const ti = elh('div', `tmpl-item${isActive ? ' active' : ''}${isShared && isActive ? ' shared-item' : ''}`,
-          `<div class="tmpl-dot"></div><span class="tmpl-name">${t.title}</span>`);
-        ti.onclick = () => setState({ selected: t, editing: false, editBody: t.body });
+          `<div class="drag-handle" title="드래그로 순서 변경">⠿</div><div class="tmpl-dot"></div><span class="tmpl-name">${t.title}</span>`);
+        ti.dataset.id = t.id;
+
+        if (canDrag && !state.search) {
+          ti.draggable = true;
+          ti.ondragstart = e => { state.dragSrcId = t.id; ti.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; };
+          ti.ondragend = () => { ti.classList.remove('dragging'); document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over')); };
+          ti.ondragover = e => { e.preventDefault(); ti.classList.add('drag-over'); };
+          ti.ondragleave = () => ti.classList.remove('drag-over');
+          ti.ondrop = e => {
+            e.preventDefault();
+            ti.classList.remove('drag-over');
+            if (state.dragSrcId === t.id) return;
+            const items = [...secList.querySelectorAll('.tmpl-item')];
+            const ids = items.map(i => i.dataset.id);
+            const srcIdx = ids.indexOf(state.dragSrcId);
+            const dstIdx = ids.indexOf(t.id);
+            if (srcIdx < 0 || dstIdx < 0) return;
+            ids.splice(srcIdx, 1);
+            ids.splice(dstIdx, 0, state.dragSrcId);
+            saveOrder(modality, section, isShared, ids);
+          };
+        }
+
+        ti.onclick = () => setState({ selected: t, editing: false, editBody: t.body, editTitle: t.title });
         ti.ondblclick = () => { setState({ selected: t }); copyToClipboard(t.body); };
-        mBody.appendChild(ti);
+        secList.appendChild(ti);
       }
+      mBody.appendChild(secList);
     }
     container.appendChild(mBody);
     mh.onclick = () => { mBody.style.display = mBody.style.display === 'none' ? '' : 'none'; };
@@ -511,12 +565,14 @@ function renderAdminModal(app) {
       row.appendChild(elt('div', 'user-row-email', u.email));
       row.appendChild(elt('div', 'user-row-date', new Date(u.created_at).toLocaleDateString('ko-KR')));
       const approveBtn = elb(u.approved ? '✅ 승인됨' : '⏳ 승인하기', `approve-btn ${u.approved ? 'approved' : 'pending'}`);
-      approveBtn.onclick = () => toggleApprove(u.id, u.approved);
+      approveBtn.onclick = () => toggleApprove(u.id, u.email, u.approved);
       row.appendChild(approveBtn);
       list.appendChild(row);
     }
   }
   modal.appendChild(list);
+  const note = elt('div', '', '💡 승인 시 이메일 앱이 열려요. 발송 후 닫으시면 됩니다.', 'font-size:11px;color:var(--text3);margin-top:8px;');
+  modal.appendChild(note);
   const btns = el('div', 'modal-btns');
   const close = elb('닫기', 'btn-cancel');
   close.onclick = () => setState({ modal: null });
@@ -527,7 +583,7 @@ function renderAdminModal(app) {
   app.appendChild(overlay);
 }
 
-// ── Utils ─────────────────────────────────────────────────────
+// ── Utils ──────────────────────────────────────────────────────
 function el(tag, cls) { const e = document.createElement(tag); if (cls) e.className = cls; return e; }
 function elt(tag, cls, text, style) { const e = el(tag, cls); e.textContent = text; if (style) e.style.cssText = style; return e; }
 function elh(tag, cls, html) { const e = el(tag, cls); e.innerHTML = html; return e; }
@@ -537,6 +593,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && state.selected && !state.editing && !state.modal && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
     copyToClipboard(state.selected.body);
   }
+  if (e.key === 'Escape' && state.modal) setState({ modal: null });
 });
 
 init();

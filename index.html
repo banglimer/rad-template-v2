@@ -566,8 +566,7 @@ function renderAdminModal(app) {
     }
   }
   modal.appendChild(list);
-  const note = elt('div', '', '💡 승인 시 이메일 앱이 열려요. 발송 후 닫으시면 됩니다.', 'font-size:11px;color:var(--text3);margin-top:8px;');
-  modal.appendChild(note);
+  
   const btns = el('div', 'modal-btns');
   const close = elb('닫기', 'btn-cancel');
   close.onclick = () => setState({ modal: null });

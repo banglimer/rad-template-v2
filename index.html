@@ -219,9 +219,10 @@ async function logout() {
 }
 
 // ── Templates ────────────────────────────────────────────────
-async function loadTemplates() {
-  setState({ loading: true });
-  const { data } = await db.from('templates').select('*').order('modality').order('section').order('title');
+async function loadTemplates(showSpinner = true) {
+  if (showSpinner) setState({ loading: true });
+  const { data } = await db.from('templates')
+    .select('*').order('modality').order('section').order('title');
   setState({ templates: data || [], loading: false });
 }
 

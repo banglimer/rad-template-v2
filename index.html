@@ -279,7 +279,7 @@ function getTree(isShared) {
   for (const t of state.templates) {
     if (t.is_shared !== isShared) continue;
     if (!isShared && t.user_id !== state.user?.id) continue;
-    if (ft && !t.title.toLowerCase().includes(ft) && !t.modality.toLowerCase().includes(ft) && !t.section.toLowerCase().includes(ft)) continue;
+    if (ft && !t.title.toLowerCase().includes(ft) && !t.modality.toLowerCase().includes(ft) && !t.section.toLowerCase().includes(ft) && !t.body.toLowerCase().includes(ft)) continue;
     if (!tree[t.modality]) tree[t.modality] = {};
     if (!tree[t.modality][t.section]) tree[t.modality][t.section] = [];
     tree[t.modality][t.section].push(t);

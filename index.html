@@ -558,7 +558,7 @@ function renderAdminModal(app) {
     for (const u of state.adminUsers) {
       const row = el('div', 'user-row');
       row.appendChild(elt('div', 'user-row-email', u.email));
-      row.appendChild(elt('div', 'user-row-date', new Date(u.created_at).toLocaleDateString('ko-KR')));
+      row.appendChild(elt('div', 'user-row-date', new Date(u.created_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' })));
       const approveBtn = elb(u.approved ? '✅ 승인됨' : '⏳ 승인하기', `approve-btn ${u.approved ? 'approved' : 'pending'}`);
       approveBtn.onclick = () => toggleApprove(u.id, u.email, u.approved);
       row.appendChild(approveBtn);

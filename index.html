@@ -338,7 +338,7 @@ function renderApp(app) {
 
   // Toolbar
   const tb = el('div', 'toolbar');
-  tb.appendChild(elh('div', 'toolbar-title', '🩻 RAD<span>TEMPLATE</span>'));
+  tb.appendChild(elh('div', 'toolbar-title', '🩻 RAD<span>TEMPLATE</span> <span style="font-size:9px;color:var(--text3);font-weight:400;letter-spacing:0.05em;">by JCW</span>'));
   const addBtn = elb('＋ 내 템플릿 추가', 'tb-btn');
   addBtn.onclick = () => setState({ modal: { type: 'add' }, newType: 'personal' });
   tb.appendChild(addBtn);

@@ -4,8 +4,8 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Radiology Template Manager</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet"/>
 <link rel="icon" href="/favicon.ico"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
@@ -42,6 +42,7 @@
   .toolbar { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--bg2); border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap; }
   .toolbar-title { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--accent); letter-spacing: 0.05em; margin-right: 8px; }
   .toolbar-title span { color: var(--text3); }
+  .toolbar-by { font-size: 9px; color: var(--text3); font-weight: 400; letter-spacing: 0.05em; }
   .tb-btn { display: flex; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 5px; border: 1px solid var(--border2); background: var(--bg3); color: var(--text2); font-size: 12px; font-family: var(--sans); cursor: pointer; transition: all .15s; }
   .tb-btn:hover { border-color: var(--accent); color: var(--accent); }
   .tb-btn.shared { border-color: var(--blue2); color: var(--blue); }
@@ -75,15 +76,13 @@
   .chevron { font-size: 9px; transition: transform .2s; display: inline-block; }
   .chevron.open { transform: rotate(90deg); }
   .sec-header { display: flex; align-items: center; gap: 6px; padding: 4px 14px 4px 26px; font-size: 12px; color: var(--text2); user-select: none; }
-
-  /* ── 드래그 가능한 템플릿 아이템 ── */
-  .tmpl-item { display: flex; align-items: center; padding: 6px 14px 6px 36px; font-size: 13px; color: var(--text2); cursor: pointer; transition: all .1s; border-left: 2px solid transparent; position: relative; }
+  .tmpl-item { display: flex; align-items: center; padding: 6px 14px 6px 36px; font-size: 13px; color: var(--text2); cursor: pointer; transition: all .1s; border-left: 2px solid transparent; }
   .tmpl-item:hover { color: var(--text); background: var(--bg3); }
   .tmpl-item.active { background: rgba(0,229,160,0.06); border-left-color: var(--accent); color: var(--accent); }
   .tmpl-item.active.shared-item { background: rgba(77,158,247,0.06); border-left-color: var(--blue); color: var(--blue); }
-  .tmpl-item.dragging { opacity: 0.4; background: var(--bg3); }
+  .tmpl-item.dragging { opacity: 0.4; }
   .tmpl-item.drag-over { border-top: 2px solid var(--accent); }
-  .drag-handle { width: 14px; height: 14px; margin-right: 4px; margin-left: -18px; opacity: 0; cursor: grab; color: var(--text3); font-size: 11px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .drag-handle { width: 14px; margin-right: 4px; margin-left: -18px; opacity: 0; cursor: grab; color: var(--text3); font-size: 11px; flex-shrink: 0; }
   .tmpl-item:hover .drag-handle { opacity: 1; }
   .tmpl-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--border2); margin-right: 8px; flex-shrink: 0; }
   .tmpl-item.active .tmpl-dot { background: var(--accent); }
@@ -108,7 +107,7 @@
   .text-area-edit::-webkit-scrollbar { width: 4px; }
   .text-area-edit::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
   .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--text3); }
-  .empty-icon { font-size: 36px; opacity: 0.3; }
+  .empty-icon { font-size: 32px; opacity: 0.3; font-family: var(--mono); color: var(--accent); }
   .bottom-bar { display: flex; align-items: center; gap: 8px; padding: 8px 20px; border-top: 1px solid var(--border); background: var(--bg2); flex-shrink: 0; }
   .action-btn { padding: 5px 14px; border-radius: 5px; background: var(--bg3); border: 1px solid var(--border2); color: var(--text2); font-size: 12px; font-family: var(--sans); cursor: pointer; transition: all .15s; }
   .action-btn:hover { border-color: var(--accent); color: var(--accent); }
@@ -175,7 +174,6 @@ let state = {
 
 function setState(patch) { Object.assign(state, patch); render(); }
 
-// ── Auth ──────────────────────────────────────────────────────
 async function init() {
   const { data: { session } } = await db.auth.getSession();
   if (session?.user) await handleUser(session.user);
@@ -208,7 +206,6 @@ async function logout() {
   setState({ user: null, approved: false, templates: [], selected: null });
 }
 
-// ── Templates ─────────────────────────────────────────────────
 async function loadTemplates(showSpinner = true) {
   if (showSpinner) setState({ loading: true });
   const { data } = await db.from('templates').select('*').order('modality').order('section').order('sort_order').order('title');
@@ -244,11 +241,8 @@ async function deleteTemplate(id) {
   if (!error) { state.templates = state.templates.filter(t => t.id !== id); showStatus('삭제됨', false); setState({ selected: null }); }
 }
 
-// ── 드래그 순서 저장 ──────────────────────────────────────────
-async function saveOrder(modality, section, isShared, orderedIds) {
-  const updates = orderedIds.map((id, idx) =>
-    db.from('templates').update({ sort_order: idx }).eq('id', id)
-  );
+async function saveOrder(orderedIds) {
+  const updates = orderedIds.map((id, idx) => db.from('templates').update({ sort_order: idx }).eq('id', id));
   await Promise.all(updates);
   state.templates = state.templates.map(t => {
     const idx = orderedIds.indexOf(t.id);
@@ -257,28 +251,26 @@ async function saveOrder(modality, section, isShared, orderedIds) {
   setState({});
 }
 
-// ── Admin ──────────────────────────────────────────────────────
 async function loadAdminUsers() {
   const { data } = await db.from('allowed_users').select('*').order('created_at', { ascending: false });
   setState({ adminUsers: data || [] });
 }
 
-async function toggleApprove(userId, userEmail, current) {
+async function toggleApprove(userId, current) {
   await db.from('allowed_users').update({ approved: !current }).eq('id', userId);
-
   await loadAdminUsers();
   showStatus(current ? '승인 취소됨' : '승인 완료!', true);
 }
 
 function showStatus(msg, ok) {
   setState({ status: msg, statusOk: ok });
-  setTimeout(() => setState({ status: '' }), 4000);
+  setTimeout(() => setState({ status: '' }), 3000);
 }
+
 function copyToClipboard(text) {
   navigator.clipboard.writeText(text).then(() => showStatus('클립보드에 복사됨', true));
 }
 
-// ── Tree helpers ───────────────────────────────────────────────
 function getTree(isShared) {
   const ft = state.search.toLowerCase();
   const tree = {};
@@ -293,7 +285,6 @@ function getTree(isShared) {
   return tree;
 }
 
-// ── Render ─────────────────────────────────────────────────────
 function render() {
   const app = document.getElementById('app');
   app.innerHTML = '';
@@ -304,287 +295,395 @@ function render() {
 }
 
 function renderLogin(app) {
-  app.innerHTML = `
-    <div class="login-screen">
-      <div class="login-logo">🩻 RAD<span>TEMPLATE</span></div>
-      <div class="login-card">
-        <div class="login-title">영상의학과 템플릿 매니저</div>
-        <div class="login-sub">구글 계정으로 로그인 후<br/>관리자 승인을 받으면 사용 가능해요</div>
-        <button class="google-btn" id="google-login">
-          <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-          Google로 로그인
-        </button>
-      </div>
-    </div>`;
+  const screen = document.createElement('div');
+  screen.className = 'login-screen';
+  screen.innerHTML = [
+    '<div class="login-logo">RAD<span>TEMPLATE</span></div>',
+    '<div class="login-card">',
+    '<div class="login-title">영상의학과 템플릿 매니저</div>',
+    '<div class="login-sub">구글 계정으로 로그인 후<br/>관리자 승인을 받으면 사용 가능해요</div>',
+    '<button class="google-btn" id="google-login">Google로 로그인</button>',
+    '</div>'
+  ].join('');
+  app.appendChild(screen);
   document.getElementById('google-login').onclick = loginWithGoogle;
 }
 
 function renderPending(app) {
-  app.innerHTML = `
-    <div class="pending-screen">
-      <div class="login-logo">🩻 RAD<span>TEMPLATE</span></div>
-      <div class="pending-card">
-        <div class="pending-icon">⏳</div>
-        <div class="pending-title">승인 대기 중</div>
-        <div class="pending-sub">관리자에게 아래 이메일로 승인을 요청하세요.<br/>승인 후 다시 로그인하면 사용할 수 있어요.</div>
-        <div class="pending-email">${state.user.email}</div>
-        <button class="pending-logout" id="pending-logout">다른 계정으로 로그인</button>
-      </div>
-    </div>`;
+  const screen = document.createElement('div');
+  screen.className = 'pending-screen';
+  screen.innerHTML = [
+    '<div class="login-logo">RAD<span>TEMPLATE</span></div>',
+    '<div class="pending-card">',
+    '<div class="pending-icon">&#x23F3;</div>',
+    '<div class="pending-title">승인 대기 중</div>',
+    '<div class="pending-sub">관리자에게 승인을 요청하세요.<br/>승인 후 다시 로그인하면 사용할 수 있어요.</div>',
+    '<div class="pending-email">' + state.user.email + '</div>',
+    '<button class="pending-logout" id="pending-logout">다른 계정으로 로그인</button>',
+    '</div>'
+  ].join('');
+  app.appendChild(screen);
   document.getElementById('pending-logout').onclick = logout;
 }
 
 function renderApp(app) {
   const isAdmin = state.user.email === ADMIN_EMAIL;
 
-  // Toolbar
   const tb = el('div', 'toolbar');
-  tb.appendChild(elh('div', 'toolbar-title', <svg width="16" height="16" viewBox="0 0 48 48" fill="none" style="display:inline;vertical-align:middle;margin-right:4px"><rect x="4" y="4" width="40" height="40" rx="4" stroke="#00e5a0" stroke-width="3" fill="none"/><line x1="24" y1="10" x2="24" y2="38" stroke="#00e5a0" stroke-width="3" stroke-linecap="round"/><line x1="10" y1="24" x2="38" y2="24" stroke="#00e5a0" stroke-width="3" stroke-linecap="round"/><circle cx="24" cy="24" r="4" fill="#0d0f12" stroke="#00e5a0" stroke-width="2"/></svg>RAD<span>TEMPLATE</span> <span style="font-size:9px;color:var(--text3);font-weight:400;letter-spacing:0.05em;">by JCW</span>'));
-  const addBtn = elb('＋ 내 템플릿 추가', 'tb-btn');
+  const titleDiv = el('div', 'toolbar-title');
+  titleDiv.innerHTML = 'RAD<span>TEMPLATE</span> ';
+  const bySpan = el('span', 'toolbar-by');
+  bySpan.textContent = 'by JCW';
+  titleDiv.appendChild(bySpan);
+  tb.appendChild(titleDiv);
+
+  const addBtn = elb('+ 내 템플릿 추가', 'tb-btn');
   addBtn.onclick = () => setState({ modal: { type: 'add' }, newType: 'personal' });
   tb.appendChild(addBtn);
-  const addSharedBtn = elb('🌐 공용 템플릿 추가', 'tb-btn shared');
+
+  const addSharedBtn = elb('+ 공용 템플릿 추가', 'tb-btn shared');
   addSharedBtn.onclick = () => setState({ modal: { type: 'add' }, newType: 'shared' });
   tb.appendChild(addSharedBtn);
+
   if (isAdmin) {
-    const adminBtn = elb('👥 사용자 관리', 'tb-btn admin');
+    const adminBtn = elb('사용자 관리', 'tb-btn admin');
     adminBtn.onclick = async () => { await loadAdminUsers(); setState({ modal: { type: 'admin' } }); };
     tb.appendChild(adminBtn);
   }
+
   tb.appendChild(el('div', 'spacer'));
+
   if (state.selected && state.selected.user_id === state.user.id) {
-    const delBtn = elb('🗑 삭제', 'tb-btn danger');
+    const delBtn = elb('삭제', 'tb-btn danger');
     delBtn.onclick = () => deleteTemplate(state.selected.id);
     tb.appendChild(delBtn);
   }
+
   const badge = el('div', 'user-badge');
   const avatar = document.createElement('img');
   avatar.className = 'user-avatar';
   avatar.src = state.user.user_metadata?.avatar_url || '';
-  avatar.onerror = () => avatar.style.display = 'none';
+  avatar.onerror = () => { avatar.style.display = 'none'; };
   badge.appendChild(avatar);
-  badge.appendChild(elt('span', '', state.user.user_metadata?.name || state.user.email));
+  const nameSpan = el('span', '');
+  nameSpan.textContent = state.user.user_metadata?.name || state.user.email;
+  badge.appendChild(nameSpan);
   const logoutBtn = elb('로그아웃', 'logout-btn');
   logoutBtn.onclick = logout;
   badge.appendChild(logoutBtn);
   tb.appendChild(badge);
   app.appendChild(tb);
 
-  // Search
   const sw = el('div', 'search-wrap');
   const si = document.createElement('input');
-  si.className = 'search-input'; si.placeholder = '제목, 내용, Modality 검색...'; si.value = state.search;
-  si.oninput = e => {
+  si.className = 'search-input';
+  si.placeholder = '제목, 내용, Modality 검색...';
+  si.value = state.search;
+  si.oninput = function(e) {
     state.search = e.target.value;
     render();
     const s = document.querySelector('.search-input');
     if (s) { s.focus(); s.setSelectionRange(state.search.length, state.search.length); }
   };
-  sw.appendChild(si); app.appendChild(sw);
+  sw.appendChild(si);
+  app.appendChild(sw);
 
-  // Main
   const main = el('div', 'main');
   const tree = el('div', 'tree-panel');
-  if (state.loading) { tree.appendChild(elh('div', 'loading', '<div class="spinner"></div>')); }
-  else {
-    tree.appendChild(elh('div', 'section-label', '<div class="section-label-dot shared"></div> 공용 템플릿'));
+
+  if (state.loading) {
+    const loadingDiv = el('div', 'loading');
+    loadingDiv.innerHTML = '<div class="spinner"></div>';
+    tree.appendChild(loadingDiv);
+  } else {
+    const sl = el('div', 'section-label');
+    sl.innerHTML = '<div class="section-label-dot shared"></div> 공용 템플릿';
+    tree.appendChild(sl);
     renderTree(tree, getTree(true), true);
-    tree.appendChild(elh('div', 'section-label', '<div class="section-label-dot personal"></div> 내 템플릿'));
+
+    const pl = el('div', 'section-label');
+    pl.innerHTML = '<div class="section-label-dot personal"></div> 내 템플릿';
+    tree.appendChild(pl);
     renderTree(tree, getTree(false), false);
   }
   main.appendChild(tree);
 
-  // Right panel
   const right = el('div', 'right-panel');
   if (!state.selected) {
-    right.innerHTML = `<div class="empty-state"><div class="empty-icon"><svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="40" height="40" rx="4" stroke="#00e5a0" stroke-width="2" fill="none" opacity="0.3"/><line x1="24" y1="10" x2="24" y2="38" stroke="#00e5a0" stroke-width="2.5" stroke-linecap="round"/><line x1="10" y1="24" x2="38" y2="24" stroke="#00e5a0" stroke-width="2.5" stroke-linecap="round"/><circle cx="24" cy="24" r="4" fill="#0d0f12" stroke="#00e5a0" stroke-width="2"/><circle cx="24" cy="14" r="3" fill="#00e5a0" opacity="0.6"/><circle cx="24" cy="34" r="3" fill="#00e5a0" opacity="0.6"/><circle cx="14" cy="24" r="3" fill="#00e5a0" opacity="0.6"/><circle cx="34" cy="24" r="3" fill="#00e5a0" opacity="0.6"/></svg></div><div style="font-size:13px">좌측에서 템플릿을 선택하세요</div><div style="font-size:11px;color:var(--text3);margin-top:4px">더블클릭하면 즉시 클립보드에 복사 · 드래그로 순서 변경</div></div>`;
+    const empty = el('div', 'empty-state');
+    const icon = el('div', 'empty-icon');
+    icon.textContent = '[ ]';
+    const msg1 = el('div', '');
+    msg1.style.fontSize = '13px';
+    msg1.textContent = '좌측에서 템플릿을 선택하세요';
+    const msg2 = el('div', '');
+    msg2.style.cssText = 'font-size:11px;color:var(--text3);margin-top:4px';
+    msg2.textContent = '더블클릭하면 즉시 클립보드에 복사 · 드래그로 순서 변경';
+    empty.appendChild(icon);
+    empty.appendChild(msg1);
+    empty.appendChild(msg2);
+    right.appendChild(empty);
   } else {
     const t = state.selected;
     const canEdit = t.user_id === state.user.id;
 
-    // Header
     const ch = el('div', 'content-header');
     const titleArea = el('div', 'content-title-area');
     if (state.editing && canEdit) {
       const titleInput = document.createElement('input');
       titleInput.className = 'content-title-input';
       titleInput.value = state.editTitle;
-      titleInput.oninput = e => { state.editTitle = e.target.value; };
+      titleInput.oninput = function(e) { state.editTitle = e.target.value; };
       titleArea.appendChild(titleInput);
     } else {
-      titleArea.appendChild(elt('div', 'content-title', t.title));
+      const titleEl = el('div', 'content-title');
+      titleEl.textContent = t.title;
+      titleArea.appendChild(titleEl);
     }
-    titleArea.appendChild(elt('div', t.is_shared ? 'shared-badge' : 'personal-badge', t.is_shared ? '🌐 공용' : '🔒 내 템플릿'));
+    const badge2 = el('div', t.is_shared ? 'shared-badge' : 'personal-badge');
+    badge2.textContent = t.is_shared ? '공용' : '내 템플릿';
+    titleArea.appendChild(badge2);
     ch.appendChild(titleArea);
-    ch.appendChild(elt('div', 'content-meta', `${t.modality} / ${t.section}`));
-    const copyBtn = elb('📋 복사', 'copy-btn');
-    copyBtn.onclick = () => { copyToClipboard(t.body); copyBtn.className = 'copy-btn copied'; copyBtn.textContent = '✓ 복사됨'; setTimeout(() => { copyBtn.className = 'copy-btn'; copyBtn.textContent = '📋 복사'; }, 2000); };
+
+    const meta = el('div', 'content-meta');
+    meta.textContent = t.modality + ' / ' + t.section;
+    ch.appendChild(meta);
+
+    const copyBtn = elb('복사', 'copy-btn');
+    copyBtn.onclick = function() {
+      copyToClipboard(t.body);
+      copyBtn.className = 'copy-btn copied';
+      copyBtn.textContent = '복사됨';
+      setTimeout(function() { copyBtn.className = 'copy-btn'; copyBtn.textContent = '복사'; }, 2000);
+    };
     ch.appendChild(copyBtn);
     right.appendChild(ch);
 
     if (state.editing && canEdit) {
       const ta = document.createElement('textarea');
-      ta.className = 'text-area-edit'; ta.value = state.editBody;
-      ta.oninput = e => { state.editBody = e.target.value; };
+      ta.className = 'text-area-edit';
+      ta.value = state.editBody;
+      ta.oninput = function(e) { state.editBody = e.target.value; };
       right.appendChild(ta);
     } else {
-      right.appendChild(elt('div', 'text-area', t.body));
+      const textDiv = el('div', 'text-area');
+      textDiv.textContent = t.body;
+      right.appendChild(textDiv);
     }
 
     const bb = el('div', 'bottom-bar');
     if (canEdit) {
-      const editBtn = elb(state.editing ? '✏️ 편집 중' : '✏️ 편집', 'action-btn' + (state.editing ? ' active' : ''));
-      editBtn.onclick = () => setState({ editing: !state.editing, editBody: t.body, editTitle: t.title });
+      const editBtn = elb(state.editing ? '편집 중' : '편집', 'action-btn' + (state.editing ? ' active' : ''));
+      editBtn.onclick = function() { setState({ editing: !state.editing, editBody: t.body, editTitle: t.title }); };
       bb.appendChild(editBtn);
       if (state.editing) {
-        const saveBtn = elb('💾 저장', 'action-btn');
-        saveBtn.onclick = () => saveTemplate(t.id, state.editBody, state.editTitle);
+        const saveBtn = elb('저장', 'action-btn');
+        saveBtn.onclick = function() { saveTemplate(t.id, state.editBody, state.editTitle); };
         bb.appendChild(saveBtn);
       }
     }
-    if (state.status) bb.appendChild(elt('span', 'status-msg' + (state.statusOk ? ' ok' : ''), state.status));
+    if (state.status) {
+      const sm = el('span', 'status-msg' + (state.statusOk ? ' ok' : ''));
+      sm.textContent = state.status;
+      bb.appendChild(sm);
+    }
     right.appendChild(bb);
   }
   main.appendChild(right);
   app.appendChild(main);
 
-  if (state.modal?.type === 'add') renderAddModal(app);
-  if (state.modal?.type === 'admin') renderAdminModal(app);
+  if (state.modal && state.modal.type === 'add') renderAddModal(app);
+  if (state.modal && state.modal.type === 'admin') renderAdminModal(app);
 }
 
 function renderTree(container, treeData, isShared) {
   if (!Object.keys(treeData).length) {
-    container.appendChild(elt('div', 'sec-header', '템플릿 없음', 'color:var(--text3);font-size:11px;padding-left:20px'));
+    const empty = el('div', 'sec-header');
+    empty.style.cssText = 'color:var(--text3);font-size:11px;padding-left:20px';
+    empty.textContent = '템플릿 없음';
+    container.appendChild(empty);
     return;
   }
-  for (const [modality, sections] of Object.entries(treeData)) {
-    const mh = elh('div', 'modality-header', `<span class="chevron open">▶</span> ${modality}`);
+  for (const modality in treeData) {
+    const sections = treeData[modality];
+    const mh = el('div', 'modality-header');
+    const chev = el('span', 'chevron open');
+    chev.textContent = '▶';
+    mh.appendChild(chev);
+    const mText = document.createTextNode(' ' + modality);
+    mh.appendChild(mText);
     container.appendChild(mh);
+
     const mBody = el('div', '');
-    for (const [section, templates] of Object.entries(sections)) {
-      mBody.appendChild(elh('div', 'sec-header', `📁 ${section}`));
+    for (const section in sections) {
+      const templates = sections[section];
+      const sh = el('div', 'sec-header');
+      sh.textContent = section;
+      mBody.appendChild(sh);
 
-      // 드래그 가능한 템플릿 목록
       const secList = el('div', '');
-      secList.dataset.modality = modality;
-      secList.dataset.section = section;
-      secList.dataset.shared = isShared;
-
-      for (const t of templates) {
-        const isActive = state.selected?.id === t.id;
-        const canDrag = t.user_id === state.user?.id || state.user?.email === ADMIN_EMAIL;
-        const ti = elh('div', `tmpl-item${isActive ? ' active' : ''}${isShared && isActive ? ' shared-item' : ''}`,
-          `<div class="drag-handle" title="드래그로 순서 변경">⠿</div><div class="tmpl-dot"></div><span class="tmpl-name">${t.title}</span>`);
+      for (let i = 0; i < templates.length; i++) {
+        const t = templates[i];
+        const isActive = state.selected && state.selected.id === t.id;
+        const canDrag = t.user_id === state.user.id || state.user.email === ADMIN_EMAIL;
+        const ti = el('div', 'tmpl-item' + (isActive ? ' active' : '') + (isShared && isActive ? ' shared-item' : ''));
         ti.dataset.id = t.id;
+
+        const handle = el('span', 'drag-handle');
+        handle.textContent = ':::';
+        ti.appendChild(handle);
+
+        const dot = el('div', 'tmpl-dot');
+        ti.appendChild(dot);
+
+        const name = el('span', 'tmpl-name');
+        name.textContent = t.title;
+        ti.appendChild(name);
 
         if (canDrag && !state.search) {
           ti.draggable = true;
-          ti.ondragstart = e => { state.dragSrcId = t.id; ti.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; };
-          ti.ondragend = () => { ti.classList.remove('dragging'); document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over')); };
-          ti.ondragover = e => { e.preventDefault(); ti.classList.add('drag-over'); };
-          ti.ondragleave = () => ti.classList.remove('drag-over');
-          ti.ondrop = e => {
+          ti.ondragstart = function(e) { state.dragSrcId = t.id; ti.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; };
+          ti.ondragend = function() { ti.classList.remove('dragging'); document.querySelectorAll('.drag-over').forEach(function(el) { el.classList.remove('drag-over'); }); };
+          ti.ondragover = function(e) { e.preventDefault(); ti.classList.add('drag-over'); };
+          ti.ondragleave = function() { ti.classList.remove('drag-over'); };
+          ti.ondrop = function(e) {
             e.preventDefault();
             ti.classList.remove('drag-over');
             if (state.dragSrcId === t.id) return;
-            const items = [...secList.querySelectorAll('.tmpl-item')];
-            const ids = items.map(i => i.dataset.id);
+            const items = Array.from(secList.querySelectorAll('.tmpl-item'));
+            const ids = items.map(function(i) { return i.dataset.id; });
             const srcIdx = ids.indexOf(state.dragSrcId);
             const dstIdx = ids.indexOf(t.id);
             if (srcIdx < 0 || dstIdx < 0) return;
             ids.splice(srcIdx, 1);
             ids.splice(dstIdx, 0, state.dragSrcId);
-            saveOrder(modality, section, isShared, ids);
+            saveOrder(ids);
           };
         }
 
-        ti.onclick = () => setState({ selected: t, editing: false, editBody: t.body, editTitle: t.title });
-        ti.ondblclick = () => { setState({ selected: t }); copyToClipboard(t.body); };
+        ti.onclick = function() { setState({ selected: t, editing: false, editBody: t.body, editTitle: t.title }); };
+        ti.ondblclick = function() { setState({ selected: t }); copyToClipboard(t.body); };
         secList.appendChild(ti);
       }
       mBody.appendChild(secList);
     }
     container.appendChild(mBody);
-    mh.onclick = () => { mBody.style.display = mBody.style.display === 'none' ? '' : 'none'; };
+    mh.onclick = function() { mBody.style.display = mBody.style.display === 'none' ? '' : 'none'; };
   }
 }
 
 function renderAddModal(app) {
-  const modalities = [...new Set(state.templates.map(t => t.modality))];
-  const sections = [...new Set(state.templates.map(t => t.section))];
-  const overlay = elh('div', 'modal-overlay', '');
-  overlay.innerHTML = `
-    <div class="modal">
-      <div class="modal-title">새 템플릿 추가</div>
-      <label>종류</label>
-      <div class="type-toggle">
-        <button class="type-btn ${state.newType === 'personal' ? 'selected-personal' : ''}" id="type-personal">🔒 내 템플릿</button>
-        <button class="type-btn ${state.newType === 'shared' ? 'selected-shared' : ''}" id="type-shared">🌐 공용 템플릿</button>
-      </div>
-      <label>MODALITY</label>
-      <input id="m-modality" list="mod-list" placeholder="예: CT, MRI, X-Ray"/>
-      <datalist id="mod-list">${modalities.map(m => `<option value="${m}">`).join('')}</datalist>
-      <label>SECTION</label>
-      <input id="m-section" list="sec-list" placeholder="예: Chest, Brain"/>
-      <datalist id="sec-list">${sections.map(s => `<option value="${s}">`).join('')}</datalist>
-      <label>제목</label><input id="m-title" placeholder="템플릿 제목"/>
-      <label>본문</label><textarea id="m-body" rows="6" placeholder="판독문 내용..."></textarea>
-      <div class="modal-btns">
-        <button class="btn-cancel" id="m-cancel">취소</button>
-        <button class="btn-ok" id="m-ok">추가</button>
-      </div>
-    </div>`;
-  app.appendChild(overlay);
-  overlay.onclick = e => { if (e.target === overlay) setState({ modal: null }); };
-  document.getElementById('m-cancel').onclick = () => setState({ modal: null });
-  document.getElementById('m-ok').onclick = () => {
+  const modalities = [];
+  const sections = [];
+  state.templates.forEach(function(t) {
+    if (modalities.indexOf(t.modality) < 0) modalities.push(t.modality);
+    if (sections.indexOf(t.section) < 0) sections.push(t.section);
+  });
+
+  const overlay = el('div', 'modal-overlay');
+  const modal = el('div', 'modal');
+
+  const title = el('div', 'modal-title');
+  title.textContent = '새 템플릿 추가';
+  modal.appendChild(title);
+
+  const typeLabel = el('label', '');
+  typeLabel.textContent = '종류';
+  modal.appendChild(typeLabel);
+
+  const typeToggle = el('div', 'type-toggle');
+  const btnPersonal = elb('내 템플릿', 'type-btn' + (state.newType === 'personal' ? ' selected-personal' : ''));
+  btnPersonal.id = 'type-personal';
+  const btnShared = elb('공용 템플릿', 'type-btn' + (state.newType === 'shared' ? ' selected-shared' : ''));
+  btnShared.id = 'type-shared';
+  typeToggle.appendChild(btnPersonal);
+  typeToggle.appendChild(btnShared);
+  modal.appendChild(typeToggle);
+
+  const modLabel = el('label', ''); modLabel.textContent = 'MODALITY'; modal.appendChild(modLabel);
+  const modInput = document.createElement('input'); modInput.id = 'm-modality'; modInput.placeholder = '예: CT, MRI, X-Ray'; modInput.setAttribute('list', 'mod-list'); modal.appendChild(modInput);
+  const modList = document.createElement('datalist'); modList.id = 'mod-list';
+  modalities.forEach(function(m) { const o = document.createElement('option'); o.value = m; modList.appendChild(o); });
+  modal.appendChild(modList);
+
+  const secLabel = el('label', ''); secLabel.textContent = 'SECTION'; modal.appendChild(secLabel);
+  const secInput = document.createElement('input'); secInput.id = 'm-section'; secInput.placeholder = '예: Chest, Brain'; secInput.setAttribute('list', 'sec-list'); modal.appendChild(secInput);
+  const secList = document.createElement('datalist'); secList.id = 'sec-list';
+  sections.forEach(function(s) { const o = document.createElement('option'); o.value = s; secList.appendChild(o); });
+  modal.appendChild(secList);
+
+  const titleLabel = el('label', ''); titleLabel.textContent = '제목'; modal.appendChild(titleLabel);
+  const titleInput = document.createElement('input'); titleInput.id = 'm-title'; titleInput.placeholder = '템플릿 제목'; modal.appendChild(titleInput);
+
+  const bodyLabel = el('label', ''); bodyLabel.textContent = '본문'; modal.appendChild(bodyLabel);
+  const bodyInput = document.createElement('textarea'); bodyInput.id = 'm-body'; bodyInput.rows = 6; bodyInput.placeholder = '판독문 내용...'; modal.appendChild(bodyInput);
+
+  const btns = el('div', 'modal-btns');
+  const cancelBtn = elb('취소', 'btn-cancel');
+  cancelBtn.onclick = function() { setState({ modal: null }); };
+  const okBtn = elb('추가', 'btn-ok');
+  okBtn.onclick = function() {
     const mod = document.getElementById('m-modality').value.trim();
     const sec = document.getElementById('m-section').value.trim();
-    const title = document.getElementById('m-title').value.trim();
-    const body = document.getElementById('m-body').value.trim();
-    if (mod && sec && title && body) addTemplate(mod, sec, title, body, state.newType === 'shared');
+    const t = document.getElementById('m-title').value.trim();
+    const b = document.getElementById('m-body').value.trim();
+    if (mod && sec && t && b) addTemplate(mod, sec, t, b, state.newType === 'shared');
   };
-  document.getElementById('type-personal').onclick = () => setState({ newType: 'personal' });
-  document.getElementById('type-shared').onclick = () => setState({ newType: 'shared' });
+  btns.appendChild(cancelBtn);
+  btns.appendChild(okBtn);
+  modal.appendChild(btns);
+  overlay.appendChild(modal);
+  overlay.onclick = function(e) { if (e.target === overlay) setState({ modal: null }); };
+  app.appendChild(overlay);
+
+  btnPersonal.onclick = function() { setState({ newType: 'personal' }); };
+  btnShared.onclick = function() { setState({ newType: 'shared' }); };
 }
 
 function renderAdminModal(app) {
   const overlay = el('div', 'modal-overlay');
   const modal = el('div', 'modal');
-  modal.innerHTML = `<div class="modal-title">👥 사용자 관리</div>`;
+
+  const title = el('div', 'modal-title');
+  title.textContent = '사용자 관리';
+  modal.appendChild(title);
+
   const list = el('div', 'user-list');
   if (!state.adminUsers.length) {
-    list.appendChild(elt('div', 'empty-users', '아직 가입한 사용자가 없어요'));
+    const empty = el('div', 'empty-users');
+    empty.textContent = '아직 가입한 사용자가 없어요';
+    list.appendChild(empty);
   } else {
-    for (const u of state.adminUsers) {
+    state.adminUsers.forEach(function(u) {
       const row = el('div', 'user-row');
-      row.appendChild(elt('div', 'user-row-email', u.email));
-      row.appendChild(elt('div', 'user-row-date', new Date(u.created_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' })));
-      const approveBtn = elb(u.approved ? '✅ 승인됨' : '⏳ 승인하기', `approve-btn ${u.approved ? 'approved' : 'pending'}`);
-      approveBtn.onclick = () => toggleApprove(u.id, u.email, u.approved);
+      const emailDiv = el('div', 'user-row-email');
+      emailDiv.textContent = u.email;
+      const dateDiv = el('div', 'user-row-date');
+      dateDiv.textContent = new Date(u.created_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' });
+      const approveBtn = elb(u.approved ? '승인됨' : '승인하기', 'approve-btn ' + (u.approved ? 'approved' : 'pending'));
+      approveBtn.onclick = function() { toggleApprove(u.id, u.approved); };
+      row.appendChild(emailDiv);
+      row.appendChild(dateDiv);
       row.appendChild(approveBtn);
       list.appendChild(row);
-    }
+    });
   }
   modal.appendChild(list);
-  
+
   const btns = el('div', 'modal-btns');
-  const close = elb('닫기', 'btn-cancel');
-  close.onclick = () => setState({ modal: null });
-  btns.appendChild(close);
+  const closeBtn = elb('닫기', 'btn-cancel');
+  closeBtn.onclick = function() { setState({ modal: null }); };
+  btns.appendChild(closeBtn);
   modal.appendChild(btns);
   overlay.appendChild(modal);
-  overlay.onclick = e => { if (e.target === overlay) setState({ modal: null }); };
+  overlay.onclick = function(e) { if (e.target === overlay) setState({ modal: null }); };
   app.appendChild(overlay);
 }
 
-// ── Utils ──────────────────────────────────────────────────────
 function el(tag, cls) { const e = document.createElement(tag); if (cls) e.className = cls; return e; }
-function elt(tag, cls, text, style) { const e = el(tag, cls); e.textContent = text; if (style) e.style.cssText = style; return e; }
-function elh(tag, cls, html) { const e = el(tag, cls); e.innerHTML = html; return e; }
 function elb(text, cls) { const e = document.createElement('button'); e.className = cls; e.textContent = text; return e; }
 
-document.addEventListener('keydown', e => {
+document.addEventListener('keydown', function(e) {
   if (e.key === 'Enter' && state.selected && !state.editing && !state.modal && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
     copyToClipboard(state.selected.body);
   }
@@ -595,4 +694,3 @@ init();
 </script>
 </body>
 </html>
-

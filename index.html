@@ -536,13 +536,13 @@ function renderTree(container, treeData, isShared) {
           if (canDrag && !state.search) {
             item.draggable = true;
             item.ondragstart = function(e) { state.dragSrcId = e.currentTarget.dataset.id; e.currentTarget.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; };
-            item.ondragend = function() { item.classList.remove('dragging'); document.querySelectorAll('.drag-over').forEach(function(el) { el.classList.remove('drag-over'); }); };
+            item.ondragend = function(e) { e.currentTarget.classList.remove('dragging'); document.querySelectorAll('.drag-over').forEach(function(el) { el.classList.remove('drag-over'); }); };
             item.ondragover = function(e) { e.preventDefault(); item.classList.add('drag-over'); };
             item.ondragleave = function() { item.classList.remove('drag-over'); };
             item.ondrop = function(e) {
   e.preventDefault();
   item.classList.remove('drag-over');
-  if (state.dragSrcId === t.id) return;
+  if (state.dragSrcId === e.currentTarget.dataset.id) return;
   var items = Array.from(secList.querySelectorAll('.tmpl-item'));
   var ids = items.map(function(i) { return i.dataset.id; });
   var srcIdx = ids.indexOf(state.dragSrcId);

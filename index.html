@@ -100,7 +100,7 @@
   .copy-btn { display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 6px; background: rgba(0,229,160,0.1); border: 1px solid var(--accent2); color: var(--accent); font-size: 12px; font-family: var(--sans); cursor: pointer; transition: all .15s; white-space: nowrap; }
   .copy-btn:hover { background: rgba(0,229,160,0.2); }
   .copy-btn.copied { background: rgba(0,229,160,0.25); }
-  .text-area { flex: 1; padding: 20px; overflow-y: auto; font-family: var(--mono); font-size: 13px; line-height: 1.8; color: var(--text); white-space: pre-wrap; word-break: break-word; }
+  .text-area { flex: 1; padding: 20px; overflow-y: auto; max-height: calc(100vh - 200px); font-family: var(--mono); font-size: 13px; line-height: 1.8; color: var(--text); white-space: pre-wrap; word-break: break-word; }
   .text-area::-webkit-scrollbar { width: 4px; }
   .text-area::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
   .text-area-edit { flex: 1; padding: 20px; background: transparent; border: none; outline: none; resize: none; font-family: var(--mono); font-size: 13px; line-height: 1.8; color: var(--text); overflow-y: auto; }

@@ -87,7 +87,7 @@
   .tmpl-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--border2); margin-right: 8px; flex-shrink: 0; }
   .tmpl-item.active .tmpl-dot { background: var(--accent); }
   .tmpl-item.active.shared-item .tmpl-dot { background: var(--blue); }
-  .tmpl-name { overflow: hidden; text-overflow: ellipsis; white-space: normal; word-break: keep-all; line-height: 1.4; }
+  .tmpl-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   .right-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
   .content-header { display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
@@ -242,13 +242,13 @@ async function deleteTemplate(id) {
 }
 
 async function saveOrder(orderedIds) {
+  const updates = orderedIds.map((id, idx) => db.from('templates').update({ sort_order: idx }).eq('id', id));
+  await Promise.all(updates);
   state.templates = state.templates.map(t => {
     const idx = orderedIds.indexOf(t.id);
     return idx >= 0 ? { ...t, sort_order: idx } : t;
   });
   setState({});
-  const updates = orderedIds.map((id, idx) => db.from('templates').update({ sort_order: idx }).eq('id', id));
-  await Promise.all(updates);
 }
 
 async function loadAdminUsers() {

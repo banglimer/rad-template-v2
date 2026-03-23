@@ -61,11 +61,12 @@
   .search-input:focus { border-color: var(--accent); }
   .search-input::placeholder { color: var(--text3); }
 
+  /* ── 핵심: min-height: 0 으로 스크롤 정상 작동 ── */
   .main { display: flex; flex: 1; overflow: hidden; min-height: 0; }
-
-  .tree-panel { width: 375px; flex-shrink: 0; background: var(--bg2); border-right: 1px solid var(--border); overflow-y: auto; padding: 8px 0; }
+  .tree-panel { width: 375px; flex-shrink: 0; background: var(--bg2); border-right: 1px solid var(--border); overflow-y: auto; padding: 8px 0; min-height: 0; }
   .tree-panel::-webkit-scrollbar { width: 4px; }
   .tree-panel::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
   .section-label { display: flex; align-items: center; gap: 6px; padding: 10px 14px 4px; font-size: 10px; font-weight: 500; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; border-top: 1px solid var(--border); margin-top: 4px; }
   .section-label:first-child { border-top: none; margin-top: 0; }
   .section-label-dot { width: 6px; height: 6px; border-radius: 50%; }
@@ -89,7 +90,7 @@
   .tmpl-item.active.shared-item .tmpl-dot { background: var(--blue); }
   .tmpl-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-  .right-panel { flex: 1; display: flex; flex-direction: column; overflow: visible; }
+  .right-panel { flex: 1; display: flex; flex-direction: column; overflow: visible; min-height: 0; }
   .content-header { display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
   .content-title-area { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; }
   .content-title { font-size: 15px; font-weight: 500; }
@@ -100,10 +101,10 @@
   .copy-btn { display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 6px; background: rgba(0,229,160,0.1); border: 1px solid var(--accent2); color: var(--accent); font-size: 12px; font-family: var(--sans); cursor: pointer; transition: all .15s; white-space: nowrap; }
   .copy-btn:hover { background: rgba(0,229,160,0.2); }
   .copy-btn.copied { background: rgba(0,229,160,0.25); }
-  .text-area { flex: 1; padding: 20px; overflow-y: auto; max-height: calc(100vh - 200px); font-family: var(--mono); font-size: 13px; line-height: 1.8; color: var(--text); white-space: pre-wrap; word-break: break-word; }
+  .text-area { flex: 1; padding: 20px; overflow-y: auto; max-height: calc(100vh - 200px); font-family: var(--mono); font-size: 13px; line-height: 1.8; color: var(--text); white-space: pre-wrap; word-break: break-word; min-height: 0; }
   .text-area::-webkit-scrollbar { width: 4px; }
   .text-area::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
-  .text-area-edit { flex: 1; padding: 20px; background: transparent; border: none; outline: none; resize: none; font-family: var(--mono); font-size: 13px; line-height: 1.8; color: var(--text); overflow-y: auto; }
+  .text-area-edit { flex: 1; padding: 20px; background: transparent; border: none; outline: none; resize: none; font-family: var(--mono); font-size: 13px; line-height: 1.8; color: var(--text); overflow-y: auto; max-height: calc(100vh - 200px); min-height: 0; }
   .text-area-edit::-webkit-scrollbar { width: 4px; }
   .text-area-edit::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
   .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--text3); }
@@ -178,14 +179,14 @@ async function init() {
   const { data: { session } } = await db.auth.getSession();
   if (session?.user) await handleUser(session.user);
   else setState({ authLoading: false, loading: false });
-  db.auth.onAuthStateChange(async (event, session) => {
-    if (session?.user) await handleUser(session.user);
+  db.auth.onAuthStateChange(async function(event, session) {
+    if (session && session.user) await handleUser(session.user);
     else setState({ user: null, approved: false, templates: [], selected: null, loading: false, authLoading: false });
   });
 }
 
 async function handleUser(user) {
-  setState({ user, authLoading: false });
+  setState({ user: user, authLoading: false });
   if (user.email === ADMIN_EMAIL) { setState({ approved: true }); await loadTemplates(); return; }
   const { data: existing } = await db.from('allowed_users').select('approved').eq('id', user.id).single();
   if (!existing) {
@@ -201,35 +202,36 @@ async function handleUser(user) {
 async function loginWithGoogle() {
   await db.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } });
 }
+
 async function logout() {
   await db.auth.signOut();
   setState({ user: null, approved: false, templates: [], selected: null });
 }
 
-async function loadTemplates(showSpinner = true) {
-  if (showSpinner) setState({ loading: true });
+async function loadTemplates(showSpinner) {
+  if (showSpinner !== false) setState({ loading: true });
   const { data } = await db.from('templates').select('*').order('modality').order('section').order('sort_order').order('title');
   setState({ templates: data || [], loading: false });
 }
 
 async function addTemplate(modality, section, title, body, isShared) {
   const { data, error } = await db.from('templates')
-    .insert([{ modality, section, title, body, is_shared: isShared, user_id: state.user.id }])
+    .insert([{ modality: modality, section: section, title: title, body: body, is_shared: isShared, user_id: state.user.id }])
     .select().single();
   if (!error && data) {
-    state.templates = [...state.templates, data];
+    state.templates = state.templates.concat([data]);
     showStatus('추가 완료', true);
     setState({ modal: null, selected: data });
   }
 }
 
 async function saveTemplate(id, body, title) {
-  const updates = { body };
+  const updates = { body: body };
   if (title !== undefined) updates.title = title;
   const { error } = await db.from('templates').update(updates).eq('id', id);
   if (!error) {
-    state.templates = state.templates.map(t => t.id === id ? { ...t, ...updates } : t);
-    if (state.selected?.id === id) state.selected = { ...state.selected, ...updates };
+    state.templates = state.templates.map(function(t) { return t.id === id ? Object.assign({}, t, updates) : t; });
+    if (state.selected && state.selected.id === id) state.selected = Object.assign({}, state.selected, updates);
     showStatus('저장 완료', true);
     setState({ editing: false });
   }
@@ -238,7 +240,11 @@ async function saveTemplate(id, body, title) {
 async function deleteTemplate(id) {
   if (!confirm('삭제하시겠습니까?')) return;
   const { error } = await db.from('templates').delete().eq('id', id);
-  if (!error) { state.templates = state.templates.filter(t => t.id !== id); showStatus('삭제됨', false); setState({ selected: null }); }
+  if (!error) {
+    state.templates = state.templates.filter(function(t) { return t.id !== id; });
+    showStatus('삭제됨', false);
+    setState({ selected: null });
+  }
 }
 
 async function saveOrder(orderedIds) {
@@ -271,20 +277,21 @@ async function toggleApprove(userId, current) {
 
 function showStatus(msg, ok) {
   setState({ status: msg, statusOk: ok });
-  setTimeout(() => setState({ status: '' }), 3000);
+  setTimeout(function() { setState({ status: '' }); }, 3000);
 }
 
 function copyToClipboard(text) {
-  navigator.clipboard.writeText(text).then(() => showStatus('클립보드에 복사됨', true));
+  navigator.clipboard.writeText(text).then(function() { showStatus('클립보드에 복사됨', true); });
 }
 
 function getTree(isShared) {
-  const ft = state.search.toLowerCase();
-  const tree = {};
-  for (const t of state.templates) {
+  var ft = state.search.toLowerCase();
+  var tree = {};
+  for (var i = 0; i < state.templates.length; i++) {
+    var t = state.templates[i];
     if (t.is_shared !== isShared) continue;
-    if (!isShared && t.user_id !== state.user?.id) continue;
-    if (ft && !t.title.toLowerCase().includes(ft) && !t.modality.toLowerCase().includes(ft) && !t.section.toLowerCase().includes(ft) && !t.body.toLowerCase().includes(ft)) continue;
+    if (!isShared && t.user_id !== (state.user && state.user.id)) continue;
+    if (ft && t.title.toLowerCase().indexOf(ft) < 0 && t.modality.toLowerCase().indexOf(ft) < 0 && t.section.toLowerCase().indexOf(ft) < 0 && t.body.toLowerCase().indexOf(ft) < 0) continue;
     if (!tree[t.modality]) tree[t.modality] = {};
     if (!tree[t.modality][t.section]) tree[t.modality][t.section] = [];
     tree[t.modality][t.section].push(t);
@@ -293,7 +300,7 @@ function getTree(isShared) {
 }
 
 function render() {
-  const app = document.getElementById('app');
+  var app = document.getElementById('app');
   app.innerHTML = '';
   if (state.authLoading) { app.innerHTML = '<div class="loading"><div class="spinner"></div> 초기화 중...</div>'; return; }
   if (!state.user) { renderLogin(app); return; }
@@ -302,196 +309,176 @@ function render() {
 }
 
 function renderLogin(app) {
-  const screen = document.createElement('div');
-  screen.className = 'login-screen';
-  screen.innerHTML = [
-    '<div class="login-logo">RAD<span>TEMPLATE</span></div>',
-    '<div class="login-card">',
-    '<div class="login-title">영상의학과 템플릿 매니저</div>',
-    '<div class="login-sub">구글 계정으로 로그인 후<br/>관리자 승인을 받으면 사용 가능해요</div>',
-    '<button class="google-btn" id="google-login">Google로 로그인</button>',
-    '</div>'
-  ].join('');
+  var screen = el('div', 'login-screen');
+  var logo = el('div', 'login-logo');
+  logo.innerHTML = 'RAD<span>TEMPLATE</span>';
+  var card = el('div', 'login-card');
+  var t1 = el('div', 'login-title'); t1.textContent = '영상의학과 템플릿 매니저';
+  var t2 = el('div', 'login-sub'); t2.innerHTML = '구글 계정으로 로그인 후<br/>관리자 승인을 받으면 사용 가능해요';
+  var btn = elb('Google로 로그인', 'google-btn'); btn.id = 'google-login';
+  card.appendChild(t1); card.appendChild(t2); card.appendChild(btn);
+  screen.appendChild(logo); screen.appendChild(card);
   app.appendChild(screen);
   document.getElementById('google-login').onclick = loginWithGoogle;
 }
 
 function renderPending(app) {
-  const screen = document.createElement('div');
-  screen.className = 'pending-screen';
-  screen.innerHTML = [
-    '<div class="login-logo">RAD<span>TEMPLATE</span></div>',
-    '<div class="pending-card">',
-    '<div class="pending-icon">&#x23F3;</div>',
-    '<div class="pending-title">승인 대기 중</div>',
-    '<div class="pending-sub">관리자에게 승인을 요청하세요.<br/>승인 후 다시 로그인하면 사용할 수 있어요.</div>',
-    '<div class="pending-email">' + state.user.email + '</div>',
-    '<button class="pending-logout" id="pending-logout">다른 계정으로 로그인</button>',
-    '</div>'
-  ].join('');
+  var screen = el('div', 'pending-screen');
+  var logo = el('div', 'login-logo'); logo.innerHTML = 'RAD<span>TEMPLATE</span>';
+  var card = el('div', 'pending-card');
+  var icon = el('div', 'pending-icon'); icon.textContent = '⏳';
+  var title = el('div', 'pending-title'); title.textContent = '승인 대기 중';
+  var sub = el('div', 'pending-sub'); sub.innerHTML = '관리자에게 승인을 요청하세요.<br/>승인 후 다시 로그인하면 사용할 수 있어요.';
+  var email = el('div', 'pending-email'); email.textContent = state.user.email;
+  var logoutBtn = elb('다른 계정으로 로그인', 'pending-logout'); logoutBtn.id = 'pending-logout';
+  card.appendChild(icon); card.appendChild(title); card.appendChild(sub); card.appendChild(email); card.appendChild(logoutBtn);
+  screen.appendChild(logo); screen.appendChild(card);
   app.appendChild(screen);
   document.getElementById('pending-logout').onclick = logout;
 }
 
 function renderApp(app) {
-  const isAdmin = state.user.email === ADMIN_EMAIL;
+  var isAdmin = state.user.email === ADMIN_EMAIL;
 
-  const tb = el('div', 'toolbar');
-  const titleDiv = el('div', 'toolbar-title');
+  var tb = el('div', 'toolbar');
+  var titleDiv = el('div', 'toolbar-title');
   titleDiv.innerHTML = 'RAD<span>TEMPLATE</span> ';
-  const bySpan = el('span', 'toolbar-by');
-  bySpan.textContent = 'by JCW';
+  var bySpan = el('span', 'toolbar-by'); bySpan.textContent = 'by JCW';
   titleDiv.appendChild(bySpan);
   tb.appendChild(titleDiv);
 
-  const addBtn = elb('+ 내 템플릿 추가', 'tb-btn');
-  addBtn.onclick = () => setState({ modal: { type: 'add' }, newType: 'personal' });
+  var addBtn = elb('+ 내 템플릿 추가', 'tb-btn');
+  addBtn.onclick = function() { setState({ modal: { type: 'add' }, newType: 'personal' }); };
   tb.appendChild(addBtn);
 
-  const addSharedBtn = elb('+ 공용 템플릿 추가', 'tb-btn shared');
-  addSharedBtn.onclick = () => setState({ modal: { type: 'add' }, newType: 'shared' });
+  var addSharedBtn = elb('+ 공용 템플릿 추가', 'tb-btn shared');
+  addSharedBtn.onclick = function() { setState({ modal: { type: 'add' }, newType: 'shared' }); };
   tb.appendChild(addSharedBtn);
 
   if (isAdmin) {
-    const adminBtn = elb('사용자 관리', 'tb-btn admin');
-    adminBtn.onclick = async () => { await loadAdminUsers(); setState({ modal: { type: 'admin' } }); };
+    var adminBtn = elb('사용자 관리', 'tb-btn admin');
+    adminBtn.onclick = async function() { await loadAdminUsers(); setState({ modal: { type: 'admin' } }); };
     tb.appendChild(adminBtn);
   }
 
   tb.appendChild(el('div', 'spacer'));
 
   if (state.selected && state.selected.user_id === state.user.id) {
-    const delBtn = elb('삭제', 'tb-btn danger');
-    delBtn.onclick = () => deleteTemplate(state.selected.id);
+    var delBtn = elb('삭제', 'tb-btn danger');
+    delBtn.onclick = function() { deleteTemplate(state.selected.id); };
     tb.appendChild(delBtn);
   }
 
-  const badge = el('div', 'user-badge');
-  const avatar = document.createElement('img');
+  var badge = el('div', 'user-badge');
+  var avatar = document.createElement('img');
   avatar.className = 'user-avatar';
-  avatar.src = state.user.user_metadata?.avatar_url || '';
-  avatar.onerror = () => { avatar.style.display = 'none'; };
+  avatar.src = (state.user.user_metadata && state.user.user_metadata.avatar_url) || '';
+  avatar.onerror = function() { avatar.style.display = 'none'; };
   badge.appendChild(avatar);
-  const nameSpan = el('span', '');
-  nameSpan.textContent = state.user.user_metadata?.name || state.user.email;
+  var nameSpan = el('span', '');
+  nameSpan.textContent = (state.user.user_metadata && state.user.user_metadata.name) || state.user.email;
   badge.appendChild(nameSpan);
-  const logoutBtn = elb('로그아웃', 'logout-btn');
+  var logoutBtn = elb('로그아웃', 'logout-btn');
   logoutBtn.onclick = logout;
   badge.appendChild(logoutBtn);
   tb.appendChild(badge);
   app.appendChild(tb);
 
-  const sw = el('div', 'search-wrap');
-  const si = document.createElement('input');
+  var sw = el('div', 'search-wrap');
+  var si = document.createElement('input');
   si.className = 'search-input';
   si.placeholder = '제목, 내용, Modality 검색...';
   si.value = state.search;
   si.oninput = function(e) {
     state.search = e.target.value;
     render();
-    const s = document.querySelector('.search-input');
+    var s = document.querySelector('.search-input');
     if (s) { s.focus(); s.setSelectionRange(state.search.length, state.search.length); }
   };
   sw.appendChild(si);
   app.appendChild(sw);
 
-  const main = el('div', 'main');
-  const tree = el('div', 'tree-panel');
+  var main = el('div', 'main');
+  var tree = el('div', 'tree-panel');
 
   if (state.loading) {
-    const loadingDiv = el('div', 'loading');
+    var loadingDiv = el('div', 'loading');
     loadingDiv.innerHTML = '<div class="spinner"></div>';
     tree.appendChild(loadingDiv);
   } else {
-    const sl = el('div', 'section-label');
+    var sl = el('div', 'section-label');
     sl.innerHTML = '<div class="section-label-dot shared"></div> 공용 템플릿';
     tree.appendChild(sl);
     renderTree(tree, getTree(true), true);
-
-    const pl = el('div', 'section-label');
+    var pl = el('div', 'section-label');
     pl.innerHTML = '<div class="section-label-dot personal"></div> 내 템플릿';
     tree.appendChild(pl);
     renderTree(tree, getTree(false), false);
   }
   main.appendChild(tree);
 
-  const right = el('div', 'right-panel');
+  var right = el('div', 'right-panel');
   if (!state.selected) {
-    const empty = el('div', 'empty-state');
-    const icon = el('div', 'empty-icon');
-    icon.textContent = '[ ]';
-    const msg1 = el('div', '');
-    msg1.style.fontSize = '13px';
-    msg1.textContent = '좌측에서 템플릿을 선택하세요';
-    const msg2 = el('div', '');
-    msg2.style.cssText = 'font-size:11px;color:var(--text3);margin-top:4px';
-    msg2.textContent = '더블클릭하면 즉시 클립보드에 복사 · 드래그로 순서 변경';
-    empty.appendChild(icon);
-    empty.appendChild(msg1);
-    empty.appendChild(msg2);
+    var empty = el('div', 'empty-state');
+    var icon = el('div', 'empty-icon'); icon.textContent = '[ ]';
+    var msg1 = el('div', ''); msg1.style.fontSize = '13px'; msg1.textContent = '좌측에서 템플릿을 선택하세요';
+    var msg2 = el('div', ''); msg2.style.cssText = 'font-size:11px;color:var(--text3);margin-top:4px'; msg2.textContent = '더블클릭하면 즉시 클립보드에 복사 · 드래그로 순서 변경';
+    empty.appendChild(icon); empty.appendChild(msg1); empty.appendChild(msg2);
     right.appendChild(empty);
   } else {
-    const t = state.selected;
-    const canEdit = t.user_id === state.user.id;
+    var t = state.selected;
+    var canEdit = t.user_id === state.user.id;
 
-    const ch = el('div', 'content-header');
-    const titleArea = el('div', 'content-title-area');
+    var ch = el('div', 'content-header');
+    var titleArea = el('div', 'content-title-area');
     if (state.editing && canEdit) {
-      const titleInput = document.createElement('input');
+      var titleInput = document.createElement('input');
       titleInput.className = 'content-title-input';
       titleInput.value = state.editTitle;
       titleInput.oninput = function(e) { state.editTitle = e.target.value; };
       titleArea.appendChild(titleInput);
     } else {
-      const titleEl = el('div', 'content-title');
-      titleEl.textContent = t.title;
+      var titleEl = el('div', 'content-title'); titleEl.textContent = t.title;
       titleArea.appendChild(titleEl);
     }
-    const badge2 = el('div', t.is_shared ? 'shared-badge' : 'personal-badge');
-    badge2.textContent = t.is_shared ? '공용' : '내 템플릿';
-    titleArea.appendChild(badge2);
+    var bdg = el('div', t.is_shared ? 'shared-badge' : 'personal-badge');
+    bdg.textContent = t.is_shared ? '공용' : '내 템플릿';
+    titleArea.appendChild(bdg);
     ch.appendChild(titleArea);
-
-    const meta = el('div', 'content-meta');
-    meta.textContent = t.modality + ' / ' + t.section;
+    var meta = el('div', 'content-meta'); meta.textContent = t.modality + ' / ' + t.section;
     ch.appendChild(meta);
-
-    const copyBtn = elb('복사', 'copy-btn');
+    var copyBtn = elb('복사', 'copy-btn');
     copyBtn.onclick = function() {
       copyToClipboard(t.body);
-      copyBtn.className = 'copy-btn copied';
-      copyBtn.textContent = '복사됨';
+      copyBtn.className = 'copy-btn copied'; copyBtn.textContent = '복사됨';
       setTimeout(function() { copyBtn.className = 'copy-btn'; copyBtn.textContent = '복사'; }, 2000);
     };
     ch.appendChild(copyBtn);
     right.appendChild(ch);
 
     if (state.editing && canEdit) {
-      const ta = document.createElement('textarea');
-      ta.className = 'text-area-edit';
-      ta.value = state.editBody;
+      var ta = document.createElement('textarea');
+      ta.className = 'text-area-edit'; ta.value = state.editBody;
       ta.oninput = function(e) { state.editBody = e.target.value; };
       right.appendChild(ta);
     } else {
-      const textDiv = el('div', 'text-area');
-      textDiv.textContent = t.body;
+      var textDiv = el('div', 'text-area'); textDiv.textContent = t.body;
       right.appendChild(textDiv);
     }
 
-    const bb = el('div', 'bottom-bar');
+    var bb = el('div', 'bottom-bar');
     if (canEdit) {
-      const editBtn = elb(state.editing ? '편집 중' : '편집', 'action-btn' + (state.editing ? ' active' : ''));
+      var editBtn = elb(state.editing ? '편집 중' : '편집', 'action-btn' + (state.editing ? ' active' : ''));
       editBtn.onclick = function() { setState({ editing: !state.editing, editBody: t.body, editTitle: t.title }); };
       bb.appendChild(editBtn);
       if (state.editing) {
-        const saveBtn = elb('저장', 'action-btn');
+        var saveBtn = elb('저장', 'action-btn');
         saveBtn.onclick = function() { saveTemplate(t.id, state.editBody, state.editTitle); };
         bb.appendChild(saveBtn);
       }
     }
     if (state.status) {
-      const sm = el('span', 'status-msg' + (state.statusOk ? ' ok' : ''));
-      sm.textContent = state.status;
+      var sm = el('span', 'status-msg' + (state.statusOk ? ' ok' : '')); sm.textContent = state.status;
       bb.appendChild(sm);
     }
     right.appendChild(bb);
@@ -504,181 +491,169 @@ function renderApp(app) {
 }
 
 function renderTree(container, treeData, isShared) {
-  if (!Object.keys(treeData).length) {
-    const empty = el('div', 'sec-header');
+  var keys = Object.keys(treeData);
+  if (!keys.length) {
+    var empty = el('div', 'sec-header');
     empty.style.cssText = 'color:var(--text3);font-size:11px;padding-left:20px';
     empty.textContent = '템플릿 없음';
     container.appendChild(empty);
     return;
   }
-  for (const modality in treeData) {
-    const sections = treeData[modality];
-    const mh = el('div', 'modality-header');
-    const chev = el('span', 'chevron open');
-    chev.textContent = '▶';
+  for (var mi = 0; mi < keys.length; mi++) {
+    var modality = keys[mi];
+    var sections = treeData[modality];
+    var mh = el('div', 'modality-header');
+    var chev = el('span', 'chevron open'); chev.textContent = '▶';
     mh.appendChild(chev);
-    const mText = document.createTextNode(' ' + modality);
-    mh.appendChild(mText);
+    mh.appendChild(document.createTextNode(' ' + modality));
     container.appendChild(mh);
 
-    const mBody = el('div', '');
-    for (const section in sections) {
-      const templates = sections[section];
-      const sh = el('div', 'sec-header');
-      sh.textContent = section;
+    var mBody = el('div', '');
+    var secKeys = Object.keys(sections);
+    for (var si = 0; si < secKeys.length; si++) {
+      var section = secKeys[si];
+      var templates = sections[section];
+      var sh = el('div', 'sec-header'); sh.textContent = section;
       mBody.appendChild(sh);
 
-      const secList = el('div', '');
-      for (let i = 0; i < templates.length; i++) {
-        const t = templates[i];
-        const isActive = state.selected && state.selected.id === t.id;
-        const canDrag = t.user_id === state.user.id || state.user.email === ADMIN_EMAIL;
-        const ti = el('div', 'tmpl-item' + (isActive ? ' active' : '') + (isShared && isActive ? ' shared-item' : ''));
-        ti.dataset.id = t.id;
+      var secList = el('div', '');
+      for (var ti = 0; ti < templates.length; ti++) {
+        (function(t) {
+          var isActive = state.selected && state.selected.id === t.id;
+          var canDrag = t.user_id === state.user.id || state.user.email === ADMIN_EMAIL;
+          var cls = 'tmpl-item' + (isActive ? ' active' : '') + (isShared && isActive ? ' shared-item' : '');
+          var item = el('div', cls);
+          item.dataset.id = t.id;
 
-        const handle = el('span', 'drag-handle');
-        handle.textContent = ':::';
-        ti.appendChild(handle);
+          var handle = el('span', 'drag-handle'); handle.textContent = ':::';
+          item.appendChild(handle);
+          var dot = el('div', 'tmpl-dot');
+          item.appendChild(dot);
+          var name = el('span', 'tmpl-name'); name.textContent = t.title;
+          item.appendChild(name);
 
-        const dot = el('div', 'tmpl-dot');
-        ti.appendChild(dot);
+          if (canDrag && !state.search) {
+            item.draggable = true;
+            item.ondragstart = function(e) { state.dragSrcId = t.id; item.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; };
+            item.ondragend = function() { item.classList.remove('dragging'); document.querySelectorAll('.drag-over').forEach(function(el) { el.classList.remove('drag-over'); }); };
+            item.ondragover = function(e) { e.preventDefault(); item.classList.add('drag-over'); };
+            item.ondragleave = function() { item.classList.remove('drag-over'); };
+            item.ondrop = function(e) {
+              e.preventDefault();
+              item.classList.remove('drag-over');
+              if (state.dragSrcId === t.id) return;
+              var items = Array.from(secList.querySelectorAll('.tmpl-item'));
+              var ids = items.map(function(i) { return i.dataset.id; });
+              var srcIdx = ids.indexOf(state.dragSrcId);
+              var dstIdx = ids.indexOf(t.id);
+              if (srcIdx < 0 || dstIdx < 0) return;
+              ids.splice(srcIdx, 1);
+              ids.splice(dstIdx, 0, state.dragSrcId);
+              saveOrder(ids);
+            };
+          }
 
-        const name = el('span', 'tmpl-name');
-        name.textContent = t.title;
-        ti.appendChild(name);
-
-        if (canDrag && !state.search) {
-          ti.draggable = true;
-          ti.ondragstart = function(e) { state.dragSrcId = t.id; ti.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; };
-          ti.ondragend = function() { ti.classList.remove('dragging'); document.querySelectorAll('.drag-over').forEach(function(el) { el.classList.remove('drag-over'); }); };
-          ti.ondragover = function(e) { e.preventDefault(); ti.classList.add('drag-over'); };
-          ti.ondragleave = function() { ti.classList.remove('drag-over'); };
-          ti.ondrop = function(e) {
-            e.preventDefault();
-            ti.classList.remove('drag-over');
-            if (state.dragSrcId === t.id) return;
-            const items = Array.from(secList.querySelectorAll('.tmpl-item'));
-            const ids = items.map(function(i) { return i.dataset.id; });
-            const srcIdx = ids.indexOf(state.dragSrcId);
-            const dstIdx = ids.indexOf(t.id);
-            if (srcIdx < 0 || dstIdx < 0) return;
-            ids.splice(srcIdx, 1);
-            ids.splice(dstIdx, 0, state.dragSrcId);
-            saveOrder(ids);
-          };
-        }
-
-        ti.onclick = function() { setState({ selected: t, editing: false, editBody: t.body, editTitle: t.title }); };
-        ti.ondblclick = function() { setState({ selected: t }); copyToClipboard(t.body); };
-        secList.appendChild(ti);
+          item.onclick = function() { setState({ selected: t, editing: false, editBody: t.body, editTitle: t.title }); };
+          item.ondblclick = function() { setState({ selected: t }); copyToClipboard(t.body); };
+          secList.appendChild(item);
+        })(templates[ti]);
       }
       mBody.appendChild(secList);
     }
     container.appendChild(mBody);
-    mh.onclick = function() { mBody.style.display = mBody.style.display === 'none' ? '' : 'none'; };
+    (function(mb) {
+      mh.onclick = function() { mb.style.display = mb.style.display === 'none' ? '' : 'none'; };
+    })(mBody);
   }
 }
 
 function renderAddModal(app) {
-  const modalities = [];
-  const sections = [];
+  var modalities = [];
+  var sections = [];
   state.templates.forEach(function(t) {
     if (modalities.indexOf(t.modality) < 0) modalities.push(t.modality);
     if (sections.indexOf(t.section) < 0) sections.push(t.section);
   });
 
-  const overlay = el('div', 'modal-overlay');
-  const modal = el('div', 'modal');
-
-  const title = el('div', 'modal-title');
-  title.textContent = '새 템플릿 추가';
+  var overlay = el('div', 'modal-overlay');
+  var modal = el('div', 'modal');
+  var title = el('div', 'modal-title'); title.textContent = '새 템플릿 추가';
   modal.appendChild(title);
 
-  const typeLabel = el('label', '');
-  typeLabel.textContent = '종류';
-  modal.appendChild(typeLabel);
-
-  const typeToggle = el('div', 'type-toggle');
-  const btnPersonal = elb('내 템플릿', 'type-btn' + (state.newType === 'personal' ? ' selected-personal' : ''));
-  btnPersonal.id = 'type-personal';
-  const btnShared = elb('공용 템플릿', 'type-btn' + (state.newType === 'shared' ? ' selected-shared' : ''));
-  btnShared.id = 'type-shared';
-  typeToggle.appendChild(btnPersonal);
-  typeToggle.appendChild(btnShared);
+  var typeLabel = el('label', ''); typeLabel.textContent = '종류'; modal.appendChild(typeLabel);
+  var typeToggle = el('div', 'type-toggle');
+  var btnP = elb('내 템플릿', 'type-btn' + (state.newType === 'personal' ? ' selected-personal' : ''));
+  var btnS = elb('공용 템플릿', 'type-btn' + (state.newType === 'shared' ? ' selected-shared' : ''));
+  typeToggle.appendChild(btnP); typeToggle.appendChild(btnS);
   modal.appendChild(typeToggle);
 
-  const modLabel = el('label', ''); modLabel.textContent = 'MODALITY'; modal.appendChild(modLabel);
-  const modInput = document.createElement('input'); modInput.id = 'm-modality'; modInput.placeholder = '예: CT, MRI, X-Ray'; modInput.setAttribute('list', 'mod-list'); modal.appendChild(modInput);
-  const modList = document.createElement('datalist'); modList.id = 'mod-list';
-  modalities.forEach(function(m) { const o = document.createElement('option'); o.value = m; modList.appendChild(o); });
+  var modLabel = el('label', ''); modLabel.textContent = 'MODALITY'; modal.appendChild(modLabel);
+  var modInput = document.createElement('input'); modInput.id = 'm-modality'; modInput.placeholder = '예: CT, MRI, X-Ray'; modInput.setAttribute('list', 'mod-list'); modal.appendChild(modInput);
+  var modList = document.createElement('datalist'); modList.id = 'mod-list';
+  modalities.forEach(function(m) { var o = document.createElement('option'); o.value = m; modList.appendChild(o); });
   modal.appendChild(modList);
 
-  const secLabel = el('label', ''); secLabel.textContent = 'SECTION'; modal.appendChild(secLabel);
-  const secInput = document.createElement('input'); secInput.id = 'm-section'; secInput.placeholder = '예: Chest, Brain'; secInput.setAttribute('list', 'sec-list'); modal.appendChild(secInput);
-  const secList = document.createElement('datalist'); secList.id = 'sec-list';
-  sections.forEach(function(s) { const o = document.createElement('option'); o.value = s; secList.appendChild(o); });
-  modal.appendChild(secList);
+  var secLabel = el('label', ''); secLabel.textContent = 'SECTION'; modal.appendChild(secLabel);
+  var secInput = document.createElement('input'); secInput.id = 'm-section'; secInput.placeholder = '예: Chest, Brain'; secInput.setAttribute('list', 'sec-list'); modal.appendChild(secInput);
+  var secList2 = document.createElement('datalist'); secList2.id = 'sec-list';
+  sections.forEach(function(s) { var o = document.createElement('option'); o.value = s; secList2.appendChild(o); });
+  modal.appendChild(secList2);
 
-  const titleLabel = el('label', ''); titleLabel.textContent = '제목'; modal.appendChild(titleLabel);
-  const titleInput = document.createElement('input'); titleInput.id = 'm-title'; titleInput.placeholder = '템플릿 제목'; modal.appendChild(titleInput);
+  var tLabel = el('label', ''); tLabel.textContent = '제목'; modal.appendChild(tLabel);
+  var tInput = document.createElement('input'); tInput.id = 'm-title'; tInput.placeholder = '템플릿 제목'; modal.appendChild(tInput);
 
-  const bodyLabel = el('label', ''); bodyLabel.textContent = '본문'; modal.appendChild(bodyLabel);
-  const bodyInput = document.createElement('textarea'); bodyInput.id = 'm-body'; bodyInput.rows = 6; bodyInput.placeholder = '판독문 내용...'; modal.appendChild(bodyInput);
+  var bLabel = el('label', ''); bLabel.textContent = '본문'; modal.appendChild(bLabel);
+  var bInput = document.createElement('textarea'); bInput.id = 'm-body'; bInput.rows = 6; bInput.placeholder = '판독문 내용...'; modal.appendChild(bInput);
 
-  const btns = el('div', 'modal-btns');
-  const cancelBtn = elb('취소', 'btn-cancel');
+  var btns = el('div', 'modal-btns');
+  var cancelBtn = elb('취소', 'btn-cancel');
   cancelBtn.onclick = function() { setState({ modal: null }); };
-  const okBtn = elb('추가', 'btn-ok');
+  var okBtn = elb('추가', 'btn-ok');
   okBtn.onclick = function() {
-    const mod = document.getElementById('m-modality').value.trim();
-    const sec = document.getElementById('m-section').value.trim();
-    const t = document.getElementById('m-title').value.trim();
-    const b = document.getElementById('m-body').value.trim();
+    var mod = document.getElementById('m-modality').value.trim();
+    var sec = document.getElementById('m-section').value.trim();
+    var t = document.getElementById('m-title').value.trim();
+    var b = document.getElementById('m-body').value.trim();
     if (mod && sec && t && b) addTemplate(mod, sec, t, b, state.newType === 'shared');
   };
-  btns.appendChild(cancelBtn);
-  btns.appendChild(okBtn);
+  btns.appendChild(cancelBtn); btns.appendChild(okBtn);
   modal.appendChild(btns);
   overlay.appendChild(modal);
   overlay.onclick = function(e) { if (e.target === overlay) setState({ modal: null }); };
   app.appendChild(overlay);
 
-  btnPersonal.onclick = function() { setState({ newType: 'personal' }); };
-  btnShared.onclick = function() { setState({ newType: 'shared' }); };
+  btnP.onclick = function() { setState({ newType: 'personal' }); };
+  btnS.onclick = function() { setState({ newType: 'shared' }); };
 }
 
 function renderAdminModal(app) {
-  const overlay = el('div', 'modal-overlay');
-  const modal = el('div', 'modal');
-
-  const title = el('div', 'modal-title');
-  title.textContent = '사용자 관리';
+  var overlay = el('div', 'modal-overlay');
+  var modal = el('div', 'modal');
+  var title = el('div', 'modal-title'); title.textContent = '사용자 관리';
   modal.appendChild(title);
 
-  const list = el('div', 'user-list');
+  var list = el('div', 'user-list');
   if (!state.adminUsers.length) {
-    const empty = el('div', 'empty-users');
-    empty.textContent = '아직 가입한 사용자가 없어요';
+    var empty = el('div', 'empty-users'); empty.textContent = '아직 가입한 사용자가 없어요';
     list.appendChild(empty);
   } else {
     state.adminUsers.forEach(function(u) {
-      const row = el('div', 'user-row');
-      const emailDiv = el('div', 'user-row-email');
-      emailDiv.textContent = u.email;
-      const dateDiv = el('div', 'user-row-date');
+      var row = el('div', 'user-row');
+      var emailDiv = el('div', 'user-row-email'); emailDiv.textContent = u.email;
+      var dateDiv = el('div', 'user-row-date');
       dateDiv.textContent = new Date(u.created_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' });
-      const approveBtn = elb(u.approved ? '승인됨' : '승인하기', 'approve-btn ' + (u.approved ? 'approved' : 'pending'));
-      approveBtn.onclick = function() { toggleApprove(u.id, u.approved); };
-      row.appendChild(emailDiv);
-      row.appendChild(dateDiv);
-      row.appendChild(approveBtn);
+      var approveBtn = elb(u.approved ? '승인됨' : '승인하기', 'approve-btn ' + (u.approved ? 'approved' : 'pending'));
+      (function(userId, current) {
+        approveBtn.onclick = function() { toggleApprove(userId, current); };
+      })(u.id, u.approved);
+      row.appendChild(emailDiv); row.appendChild(dateDiv); row.appendChild(approveBtn);
       list.appendChild(row);
     });
   }
   modal.appendChild(list);
 
-  const btns = el('div', 'modal-btns');
-  const closeBtn = elb('닫기', 'btn-cancel');
+  var btns = el('div', 'modal-btns');
+  var closeBtn = elb('닫기', 'btn-cancel');
   closeBtn.onclick = function() { setState({ modal: null }); };
   btns.appendChild(closeBtn);
   modal.appendChild(btns);
@@ -687,8 +662,8 @@ function renderAdminModal(app) {
   app.appendChild(overlay);
 }
 
-function el(tag, cls) { const e = document.createElement(tag); if (cls) e.className = cls; return e; }
-function elb(text, cls) { const e = document.createElement('button'); e.className = cls; e.textContent = text; return e; }
+function el(tag, cls) { var e = document.createElement(tag); if (cls) e.className = cls; return e; }
+function elb(text, cls) { var e = document.createElement('button'); e.className = cls; e.textContent = text; return e; }
 
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Enter' && state.selected && !state.editing && !state.modal && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {

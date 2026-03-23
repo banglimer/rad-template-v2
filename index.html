@@ -540,18 +540,26 @@ function renderTree(container, treeData, isShared) {
             item.ondragover = function(e) { e.preventDefault(); item.classList.add('drag-over'); };
             item.ondragleave = function() { item.classList.remove('drag-over'); };
             item.ondrop = function(e) {
-              e.preventDefault();
-              item.classList.remove('drag-over');
-              if (state.dragSrcId === t.id) return;
-              var items = Array.from(secList.querySelectorAll('.tmpl-item'));
-              var ids = items.map(function(i) { return i.dataset.id; });
-              var srcIdx = ids.indexOf(state.dragSrcId);
-              var dstIdx = ids.indexOf(t.id);
-              if (srcIdx < 0 || dstIdx < 0) return;
-              ids.splice(srcIdx, 1);
-              ids.splice(dstIdx, 0, state.dragSrcId);
-              saveOrder(ids);
-            };
+  e.preventDefault();
+  item.classList.remove('drag-over');
+  if (state.dragSrcId === t.id) return;
+  var items = Array.from(secList.querySelectorAll('.tmpl-item'));
+  var ids = items.map(function(i) { return i.dataset.id; });
+  var srcIdx = ids.indexOf(state.dragSrcId);
+  var dstIdx = ids.indexOf(t.id);
+  if (srcIdx < 0 || dstIdx < 0) return;
+  // DOM 직접 이동
+  var srcEl = secList.querySelector('[data-id="' + state.dragSrcId + '"]');
+  if (srcIdx > dstIdx) {
+    secList.insertBefore(srcEl, item);
+  } else {
+    secList.insertBefore(srcEl, item.nextSibling);
+  }
+  // 새 순서로 저장
+  ids.splice(srcIdx, 1);
+  ids.splice(dstIdx, 0, state.dragSrcId);
+  saveOrder(ids);
+};
           }
 
           item.onclick = function() { setState({ selected: t, editing: false, editBody: t.body, editTitle: t.title }); };

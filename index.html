@@ -242,13 +242,20 @@ async function deleteTemplate(id) {
 }
 
 async function saveOrder(orderedIds) {
-  const updates = orderedIds.map((id, idx) => db.from('templates').update({ sort_order: idx }).eq('id', id));
-  await Promise.all(updates);
-  state.templates = state.templates.map(t => {
-    const idx = orderedIds.indexOf(t.id);
-    return idx >= 0 ? { ...t, sort_order: idx } : t;
+  state.templates = state.templates.map(function(t) {
+    var idx = orderedIds.indexOf(t.id);
+    return idx >= 0 ? Object.assign({}, t, { sort_order: idx }) : t;
+  });
+  state.templates.sort(function(a, b) {
+    if (a.modality !== b.modality) return a.modality.localeCompare(b.modality);
+    if (a.section !== b.section) return a.section.localeCompare(b.section);
+    return (a.sort_order || 0) - (b.sort_order || 0);
   });
   setState({});
+  var updates = orderedIds.map(function(id, idx) {
+    return db.from('templates').update({ sort_order: idx }).eq('id', id);
+  });
+  await Promise.all(updates);
 }
 
 async function loadAdminUsers() {

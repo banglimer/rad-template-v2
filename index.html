@@ -574,7 +574,7 @@ function renderAddModal(app) {
   };
   btns.appendChild(cancelBtn); btns.appendChild(okBtn); modal.appendChild(btns);
   overlay.appendChild(modal);
-  overlay.onclick = e => { if (e.target === overlay) setState({ modal: null }); };
+  overlay.onclick = e => { e.stopPropagation(); };
   app.appendChild(overlay);
   btnP.onclick = () => setState({ newType: 'personal' });
   btnS.onclick = () => setState({ newType: 'shared' });

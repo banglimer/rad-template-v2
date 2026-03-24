@@ -583,7 +583,7 @@ function renderAdminModal(app) {
   const closeBtn = elb('닫기', 'btn-cancel'); closeBtn.onclick = () => setState({ modal: null });
   btns.appendChild(closeBtn); modal.appendChild(btns);
   overlay.appendChild(modal);
-  overlay.onclick = e => { if (e.target === overlay) setState({ modal: null }); };
+  overlay.onclick = e => { e.stopPropagation(); };
   app.appendChild(overlay);
 }
 

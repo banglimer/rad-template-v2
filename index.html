@@ -196,7 +196,8 @@ async function handleUser(user) {
   if (!existing) {
     await db.from('allowed_users').insert([{ id: user.id, email: user.email, approved: false }]);
     setState({ approved: false, loading: false });
-  } else if (existing.approved) {
+ } else if (existing.approved) {
+    await db.from('allowed_users').update({ last_seen: new Date().toISOString() }).eq('id', user.id);
     setState({ approved: true }); await loadTemplates();
   } else {
     setState({ approved: false, loading: false });

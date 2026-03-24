@@ -396,6 +396,23 @@ function renderApp(app) {
     const pl = el('div', 'section-label'); pl.innerHTML = '<div class="section-label-dot personal"></div> 내 템플릿';
     tree.appendChild(pl); renderTree(tree, getTree(false), false);
   }
+  const resizer = el('div', 'resizer');
+tree.appendChild(resizer);
+resizer.addEventListener('mousedown', e => {
+  e.preventDefault();
+  const startX = e.clientX;
+  const startW = tree.offsetWidth;
+  const onMove = e => {
+    const newW = Math.max(150, Math.min(600, startW + e.clientX - startX));
+    tree.style.width = newW + 'px';
+  };
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  };
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+});
   main.appendChild(tree);
 
   const right = el('div', 'right-panel');

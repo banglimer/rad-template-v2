@@ -63,7 +63,9 @@
   .search-input::placeholder{color:var(--text3)}
 
   .main{display:flex;flex:1;overflow:hidden;min-height:0}
-  .tree-panel{width:375px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);overflow-y:auto;padding:8px 0;min-height:0}
+  .tree-panel{width:375px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);overflow-y:auto;padding:8px 0;min-height:0;position:relative}
+.resizer{width:5px;background:transparent;cursor:col-resize;position:absolute;right:0;top:0;bottom:0;z-index:10;transition:background .15s}
+.resizer:hover{background:var(--accent2)}
   .tree-panel::-webkit-scrollbar{width:4px}
   .tree-panel::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 

@@ -592,7 +592,10 @@ function renderAdminModal(app) {
     state.adminUsers.forEach(u => {
       const row = el('div', 'user-row');
       const emailDiv = el('div', 'user-row-email'); emailDiv.textContent = u.email;
-      const dateDiv = el('div', 'user-row-date'); dateDiv.textContent = new Date(u.created_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' });
+      const dateDiv = el('div', 'user-row-date'); const lastSeen = u.last_seen ? new Date(u.last_seen).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }) : '기록 없음';
+const daysSince = u.last_seen ? Math.floor((Date.now() - new Date(u.last_seen)) / 86400000) : 999;
+dateDiv.textContent = '최근접속: ' + lastSeen;
+dateDiv.style.color = daysSince > 90 ? 'var(--danger)' : 'var(--text3)';
       const approveBtn = elb(u.approved ? '승인됨' : '승인하기', 'approve-btn ' + (u.approved ? 'approved' : 'pending'));
       approveBtn.onclick = () => toggleApprove(u.id, u.approved);
       row.appendChild(emailDiv); row.appendChild(dateDiv); row.appendChild(approveBtn); list.appendChild(row);

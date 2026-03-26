@@ -353,6 +353,45 @@ function renderApp(app) {
 
   if (isAdmin) {
     const adminBtn = elb('사용자 관리', 'tb-btn admin');
+    const backupBtn = elb('백업', 'tb-btn admin');
+backupBtn.onclick = () => {
+  const data = JSON.stringify(state.templates, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'rad-templates-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showStatus('백업 완료!', true);
+};
+tb.appendChild(backupBtn);
+    const restoreBtn = elb('복원', 'tb-btn admin');
+restoreBtn.onclick = () => {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const text = await file.text();
+    const templates = JSON.parse(text);
+    if (!confirm(templates.length + '개 템플릿을 복원하시겠습니까?\n기존 데이터는 유지되고 새로 추가됩니다.')) return;
+    let count = 0;
+    for (const t of templates) {
+      const { error } = await db.from('templates').upsert({
+        id: t.id, modality: t.modality, section: t.section,
+        title: t.title, body: t.body, is_shared: t.is_shared,
+        user_id: t.user_id, sort_order: t.sort_order
+      });
+      if (!error) count++;
+    }
+    await loadTemplates(false);
+    showStatus(count + '개 복원 완료!', true);
+  };
+  input.click();
+};
+tb.appendChild(restoreBtn);
     adminBtn.onclick = async () => { await loadAdminUsers(); setState({ modal: { type: 'admin' } }); };
     tb.appendChild(adminBtn);
   }

@@ -64,8 +64,9 @@
 
   .main{display:flex;flex:1;overflow:hidden;min-height:0}
   .tree-panel{width:375px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);overflow-y:auto;padding:8px 0;min-height:0;position:relative}
-.resizer{width:5px;background:transparent;cursor:col-resize;position:absolute;right:0;top:0;bottom:0;z-index:10;transition:background .15s}
+.resizer{width:5px;background:transparent;cursor:col-resize;position:absolute;right:0;top:0;bottom:0;z-index:10;transition:background .15s;touch-action:none;-webkit-user-select:none;user-select:none}
 .resizer:hover{background:var(--accent2)}
+@media (max-width:768px){.resizer{width:14px}}
   .tree-panel::-webkit-scrollbar{width:4px}
   .tree-panel::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 
@@ -437,22 +438,41 @@ tb.appendChild(restoreBtn);
     tree.appendChild(pl); renderTree(tree, getTree(false), false);
   }
   const resizer = el('div', 'resizer');
-tree.appendChild(resizer);
-resizer.addEventListener('mousedown', e => {
-  e.preventDefault();
-  const startX = e.clientX;
-  const startW = tree.offsetWidth;
-  const onMove = e => {
-    const newW = Math.max(150, Math.min(600, startW + e.clientX - startX));
+  tree.appendChild(resizer);
+  const applyWidth = (clientX, startX, startW) => {
+    const newW = Math.max(150, Math.min(600, startW + clientX - startX));
     tree.style.width = newW + 'px';
   };
-  const onUp = () => {
-    document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup', onUp);
-  };
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup', onUp);
-});
+  resizer.addEventListener('mousedown', e => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = tree.offsetWidth;
+    const onMove = ev => applyWidth(ev.clientX, startX, startW);
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+  resizer.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const startX = e.touches[0].clientX;
+    const startW = tree.offsetWidth;
+    const onMove = ev => {
+      ev.preventDefault();
+      if (!ev.touches.length) return;
+      applyWidth(ev.touches[0].clientX, startX, startW);
+    };
+    const onEnd = () => {
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onEnd);
+      document.removeEventListener('touchcancel', onEnd);
+    };
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onEnd);
+    document.addEventListener('touchcancel', onEnd);
+  }, { passive: false });
   main.appendChild(tree);
 
   const right = el('div', 'right-panel');

@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.25, maximum-scale=5, viewport-fit=cover"/>
 <title>Radiology Template Manager</title>
 <link rel="icon" href="/favicon.ico"/>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet"/>
@@ -19,8 +19,14 @@
     --sans:'IBM Plex Sans KR',sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
-  #app{display:flex;flex-direction:column;flex:1;min-height:0;height:100vh}
+  html{height:100%;-webkit-text-size-adjust:100%}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+  #app{display:flex;flex-direction:column;flex:1;min-height:0;height:100vh;height:100dvh}
+  @media (max-width:768px){
+    html{overflow-x:auto}
+    body{overflow-x:auto;overflow-y:hidden;min-height:100dvh;min-height:-webkit-fill-available}
+    #app{min-height:100dvh;min-height:-webkit-fill-available}
+  }
 
   .login-screen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:32px}
   .login-logo{font-family:var(--mono);font-size:28px;color:var(--accent);letter-spacing:.08em}

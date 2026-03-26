@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.25, maximum-scale=5, viewport-fit=cover"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.25, viewport-fit=cover"/>
 <title>Radiology Template Manager</title>
 <link rel="icon" href="/favicon.ico"/>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet"/>
@@ -25,7 +25,8 @@
   @media (max-width:768px){
     html{overflow-x:auto}
     body{overflow-x:auto;overflow-y:hidden;min-height:100dvh;min-height:-webkit-fill-available}
-    #app{min-height:100dvh;min-height:-webkit-fill-available}
+    /* 모바일 크롬: 콘텐츠 너비≤뷰포트면 축소가 막힘 → #app을 약간 더 넓혀 핀치 축소 허용 */
+    #app{min-height:100dvh;min-height:-webkit-fill-available;min-width:max(400px,100.01vw)}
   }
 
   .login-screen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:32px}

@@ -25,9 +25,13 @@
   @media (max-width:768px){
     html{overflow-x:auto}
     body{overflow-x:auto;overflow-y:hidden;min-height:100dvh;min-height:-webkit-fill-available}
-    /* 모바일 크롬: 콘텐츠 너비≤뷰포트면 축소가 막힘 → #app을 약간 더 넓혀 핀치 축소 허용 */
-    #app{min-height:100dvh;min-height:-webkit-fill-available;min-width:max(400px,100.01vw)}
+    #app{min-height:100dvh;min-height:-webkit-fill-available}
   }
+  .zoom-ctl{display:none;align-items:center;gap:4px;margin-right:4px}
+  @media (max-width:768px),(pointer:coarse){
+    .zoom-ctl{display:flex}
+  }
+  .zoom-label{font-size:11px;color:var(--text3);min-width:38px;text-align:center;font-family:var(--mono)}
 
   .login-screen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:32px}
   .login-logo{font-family:var(--mono);font-size:28px;color:var(--accent);letter-spacing:.08em}
@@ -176,6 +180,12 @@ const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 // 드래그 상태는 전역 변수로 관리 (state 밖에)
 let dragSrcId = null;
 
+function loadViewScale() {
+  const v = parseFloat(localStorage.getItem('rad-view-scale'));
+  if (Number.isFinite(v) && v >= 0.5 && v <= 1.5) return Math.round(v * 100) / 100;
+  return 1;
+}
+
 let state = {
   user: null, approved: false,
   templates: [], search: '',
@@ -184,9 +194,25 @@ let state = {
   adminUsers: [],
   status: '', statusOk: false,
   loading: true, authLoading: true,
+  viewScale: loadViewScale(),
 };
 
 function setState(patch) { Object.assign(state, patch); render(); }
+
+function setViewScale(s) {
+  s = Math.round(Math.min(1.5, Math.max(0.5, s)) * 100) / 100;
+  localStorage.setItem('rad-view-scale', String(s));
+  setState({ viewScale: s });
+}
+
+function bumpViewScale(delta) {
+  setViewScale((state.viewScale ?? 1) + delta);
+}
+
+function applyRootZoom(rootEl) {
+  const s = Math.min(1.5, Math.max(0.5, state.viewScale ?? 1));
+  rootEl.style.zoom = String(s);
+}
 
 async function init() {
   const { data: { session } } = await db.auth.getSession();
@@ -308,10 +334,11 @@ function getTree(isShared) {
 function render() {
   const app = document.getElementById('app');
   app.innerHTML = '';
-  if (state.authLoading) { app.innerHTML = '<div class="loading"><div class="spinner"></div> 초기화 중...</div>'; return; }
-  if (!state.user) { renderLogin(app); return; }
-  if (!state.approved && state.user.email !== ADMIN_EMAIL) { renderPending(app); return; }
+  if (state.authLoading) { app.innerHTML = '<div class="loading"><div class="spinner"></div> 초기화 중...</div>'; applyRootZoom(app); return; }
+  if (!state.user) { renderLogin(app); applyRootZoom(app); return; }
+  if (!state.approved && state.user.email !== ADMIN_EMAIL) { renderPending(app); applyRootZoom(app); return; }
   renderApp(app);
+  applyRootZoom(app);
 }
 
 function renderLogin(app) {
@@ -351,6 +378,17 @@ function renderApp(app) {
   const bySpan = el('span', 'toolbar-by'); bySpan.textContent = 'by JCW';
   titleDiv.appendChild(bySpan);
   tb.appendChild(titleDiv);
+
+  const zWrap = el('div', 'zoom-ctl');
+  const zMinus = elb('−', 'tb-btn'); zMinus.title = '화면 축소';
+  const zLab = el('span', 'zoom-label'); zLab.textContent = Math.round((state.viewScale ?? 1) * 100) + '%';
+  const zPlus = elb('+', 'tb-btn'); zPlus.title = '화면 확대';
+  const zReset = elb('100%', 'tb-btn'); zReset.title = '원래 크기';
+  zMinus.onclick = e => { e.preventDefault(); bumpViewScale(-0.1); };
+  zPlus.onclick = e => { e.preventDefault(); bumpViewScale(0.1); };
+  zReset.onclick = e => { e.preventDefault(); setViewScale(1); };
+  zWrap.appendChild(zMinus); zWrap.appendChild(zLab); zWrap.appendChild(zPlus); zWrap.appendChild(zReset);
+  tb.appendChild(zWrap);
 
   const addBtn = elb('+ 내 템플릿 추가', 'tb-btn');
   addBtn.onclick = () => setState({ modal: { type: 'add' }, newType: 'personal' });

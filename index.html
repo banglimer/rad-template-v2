@@ -128,6 +128,7 @@
   .action-btn{padding:5px 14px;border-radius:5px;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);font-size:12px;font-family:var(--sans);cursor:pointer;transition:all .15s}
   .action-btn:hover{border-color:var(--accent);color:var(--accent)}
   .action-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,229,160,.06)}
+  .action-btn.danger:hover{border-color:var(--danger);color:var(--danger)}
   .status-msg{font-size:11px;color:var(--text3);font-family:var(--mono)}
   .status-msg.ok{color:var(--accent)}
 
@@ -280,10 +281,25 @@ async function saveTemplate(id, body, title) {
   }
 }
 
+function canDeleteTemplate(t) {
+  if (!t || !state.user) return false;
+  if (t.user_id === state.user.id) return true;
+  if (state.user.email === ADMIN_EMAIL) return true;
+  return false;
+}
+
 async function deleteTemplate(id) {
-  if (!confirm('삭제하시겠습니까?')) return;
+  const t = state.templates.find(x => x.id === id) || state.selected;
+  const msg = t?.is_shared ? '공용 템플릿을 삭제합니다. 계속하시겠습니까?' : '이 템플릿을 삭제하시겠습니까?';
+  if (!confirm(msg)) return;
   const { error } = await db.from('templates').delete().eq('id', id);
-  if (!error) { state.templates = state.templates.filter(t => t.id !== id); showStatus('삭제됨', false); setState({ selected: null }); }
+  if (!error) {
+    state.templates = state.templates.filter(x => x.id !== id);
+    showStatus('삭제됨', true);
+    setState({ selected: null, editing: false });
+  } else {
+    showStatus('삭제 실패: ' + (error.message || '권한을 확인하세요'), false);
+  }
 }
 
 async function doSaveOrder(orderedIds) {
@@ -448,7 +464,7 @@ tb.appendChild(restoreBtn);
   }
   tb.appendChild(el('div', 'spacer'));
 
-  if (state.selected && state.selected.user_id === state.user.id) {
+  if (state.selected && canDeleteTemplate(state.selected)) {
     const delBtn = elb('삭제', 'tb-btn danger');
     delBtn.onclick = () => deleteTemplate(state.selected.id);
     tb.appendChild(delBtn);
@@ -573,6 +589,7 @@ tb.appendChild(restoreBtn);
   } else {
     const t = state.selected;
     const canEdit = t.user_id === state.user.id;
+    const canDelete = canDeleteTemplate(t);
     const ch = el('div', 'content-header');
     const ta = el('div', 'content-title-area');
     if (state.editing && canEdit) {
@@ -601,6 +618,11 @@ tb.appendChild(restoreBtn);
         const saveBtn = elb('저장', 'action-btn');
         saveBtn.onclick = () => saveTemplate(t.id, state.editBody, state.editTitle); bb.appendChild(saveBtn);
       }
+    }
+    if (canDelete) {
+      const delBtn = elb('삭제', 'action-btn danger');
+      delBtn.onclick = () => deleteTemplate(t.id);
+      bb.appendChild(delBtn);
     }
     if (state.status) { const sm = el('span', 'status-msg' + (state.statusOk ? ' ok' : '')); sm.textContent = state.status; bb.appendChild(sm); }
     right.appendChild(bb);

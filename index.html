@@ -34,8 +34,11 @@
   .zoom-label{font-size:11px;color:var(--text3);min-width:38px;text-align:center;font-family:var(--mono)}
 
   .login-screen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:32px}
-  .login-logo{font-family:var(--mono);font-size:28px;color:var(--accent);letter-spacing:.08em}
+  .login-logo{font-family:var(--mono);font-size:28px;color:var(--accent);letter-spacing:.08em;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
   .login-logo span{color:var(--text3)}
+  .rad-emoji{font-family:"Segoe UI Emoji","Segoe UI Symbol",sans-serif;font-style:normal;font-weight:400;line-height:1;display:inline-block;vertical-align:middle}
+  .login-logo .rad-emoji{font-size:32px;letter-spacing:2px}
+  .toolbar-title .rad-emoji{margin-right:6px;font-size:15px;letter-spacing:1px}
   .login-card{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:36px 44px;display:flex;flex-direction:column;align-items:center;gap:20px;width:340px}
   .login-title{font-size:16px;font-weight:500}
   .login-sub{font-size:12px;color:var(--text3);text-align:center;line-height:1.6}
@@ -123,7 +126,7 @@
   .text-area-edit::-webkit-scrollbar{width:4px}
   .text-area-edit::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
   .empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--text3)}
-  .empty-icon{font-size:32px;opacity:.3;font-family:var(--mono);color:var(--accent)}
+  .empty-icon{font-size:42px;line-height:1;opacity:.9;letter-spacing:4px;font-family:"Segoe UI Emoji","Segoe UI Symbol",var(--sans),sans-serif}
   .bottom-bar{display:flex;align-items:center;gap:8px;padding:8px 20px;border-top:1px solid var(--border);background:var(--bg2);flex-shrink:0}
   .action-btn{padding:5px 14px;border-radius:5px;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);font-size:12px;font-family:var(--sans);cursor:pointer;transition:all .15s}
   .action-btn:hover{border-color:var(--accent);color:var(--accent)}
@@ -180,6 +183,10 @@ const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // 드래그 상태는 전역 변수로 관리 (state 밖에)
 let dragSrcId = null;
+/** 왼쪽 트리 패널 스크롤 복원용 (render 시 DOM 재생성으로 초기화되는 것 방지) */
+let pendingTreeScroll = null;
+/** Windows 10 등에서도 잘 보이는 영상의학 느낌 이모지(병원 + 촬영) */
+const RAD_EMOJI = '🏥📷';
 
 function loadViewScale() {
   const raw = localStorage.getItem('rad-view-scale');
@@ -353,6 +360,11 @@ function getTree(isShared) {
 
 function render() {
   const app = document.getElementById('app');
+  pendingTreeScroll = null;
+  if (state.user && state.approved && !state.authLoading) {
+    const existingTree = app.querySelector('.tree-panel');
+    if (existingTree) pendingTreeScroll = existingTree.scrollTop;
+  }
   app.innerHTML = '';
   if (state.authLoading) { app.innerHTML = '<div class="loading"><div class="spinner"></div> 초기화 중...</div>'; applyRootZoom(app); return; }
   if (!state.user) { renderLogin(app); applyRootZoom(app); return; }
@@ -363,7 +375,8 @@ function render() {
 
 function renderLogin(app) {
   const screen = el('div', 'login-screen');
-  const logo = el('div', 'login-logo'); logo.innerHTML = 'RAD<span>TEMPLATE</span>';
+  const logo = el('div', 'login-logo');
+  logo.innerHTML = '<span class="rad-emoji" aria-hidden="true">' + RAD_EMOJI + '</span> RAD<span>TEMPLATE</span>';
   const card = el('div', 'login-card');
   const t1 = el('div', 'login-title'); t1.textContent = '영상의학과 템플릿 매니저';
   const t2 = el('div', 'login-sub'); t2.innerHTML = '구글 계정으로 로그인 후<br/>관리자 승인을 받으면 사용 가능해요';
@@ -376,7 +389,8 @@ function renderLogin(app) {
 
 function renderPending(app) {
   const screen = el('div', 'pending-screen');
-  const logo = el('div', 'login-logo'); logo.innerHTML = 'RAD<span>TEMPLATE</span>';
+  const logo = el('div', 'login-logo');
+  logo.innerHTML = '<span class="rad-emoji" aria-hidden="true">' + RAD_EMOJI + '</span> RAD<span>TEMPLATE</span>';
   const card = el('div', 'pending-card');
   const icon = el('div', 'pending-icon'); icon.textContent = '⏳';
   const title = el('div', 'pending-title'); title.textContent = '승인 대기 중';
@@ -394,7 +408,7 @@ function renderApp(app) {
 
   const tb = el('div', 'toolbar');
   const titleDiv = el('div', 'toolbar-title');
-  titleDiv.innerHTML = 'RAD<span>TEMPLATE</span> ';
+  titleDiv.innerHTML = '<span class="rad-emoji" aria-hidden="true">' + RAD_EMOJI + '</span> RAD<span>TEMPLATE</span> ';
   const bySpan = el('span', 'toolbar-by'); bySpan.textContent = 'by JCW';
   titleDiv.appendChild(bySpan);
   tb.appendChild(titleDiv);
@@ -578,11 +592,15 @@ tb.appendChild(restoreBtn);
   if (window.PointerEvent) attachPointerResize();
   else attachTouchResizeFallback();
   main.appendChild(treeWrap);
+  if (pendingTreeScroll !== null) {
+    const y = pendingTreeScroll;
+    requestAnimationFrame(() => { tree.scrollTop = y; });
+  }
 
   const right = el('div', 'right-panel');
   if (!state.selected) {
     const empty = el('div', 'empty-state');
-    const icon = el('div', 'empty-icon'); icon.textContent = '[ ]';
+    const icon = el('div', 'empty-icon'); icon.setAttribute('aria-hidden', 'true'); icon.textContent = RAD_EMOJI;
     const m1 = el('div', ''); m1.style.fontSize = '13px'; m1.textContent = '좌측에서 템플릿을 선택하세요';
     const m2 = el('div', ''); m2.style.cssText = 'font-size:11px;color:var(--text3);margin-top:4px'; m2.textContent = '더블클릭 = 즉시 복사 · 드래그 = 순서 변경';
     empty.appendChild(icon); empty.appendChild(m1); empty.appendChild(m2); right.appendChild(empty);
